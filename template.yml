@@ -1,0 +1,12 @@
+services:
+  {{ container_name }}:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - {{ container_name }}:/postgre/data/
+
+volumes:
+  {{ container_name }}:

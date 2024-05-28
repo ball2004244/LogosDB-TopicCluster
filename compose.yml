@@ -1,0 +1,154 @@
+version: '3'
+services:
+  db1:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db1:/postgre/data/
+
+  db2:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db2:/postgre/data/
+
+  db3:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db3:/postgre/data/
+
+  db4:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db4:/postgre/data/
+
+  db5:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db5:/postgre/data/
+
+  db6:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db6:/postgre/data/
+
+  db7:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db7:/postgre/data/
+
+  db8:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db8:/postgre/data/
+
+  db9:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db9:/postgre/data/
+
+  db10:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db10:/postgre/data/
+
+  db11:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db11:/postgre/data/
+
+  db12:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db12:/postgre/data/
+
+  db13:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db13:/postgre/data/
+
+  db14:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db14:/postgre/data/
+
+  db15:
+    image: postgres:16.3
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db15:/postgre/data/
+
+volumes:
+  db1:
+  db2:
+  db3:
+  db4:
+  db5:
+  db6:
+  db7:
+  db8:
+  db9:
+  db10:
+  db11:
+  db12:
+  db13:
+  db14:
+  db15:
+
