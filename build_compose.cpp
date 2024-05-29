@@ -3,19 +3,15 @@
 #include <vector>
 #include <string>
 
-int main()
+std::vector<std::string> readInputFile(const std::string &inputFileName)
 {
-    // Read the number of containers to be created
-    std::string inputFileName = "input.txt";
-    std::cout << "Read input array from file: " << inputFileName << std::endl;
     std::ifstream inputfile(inputFileName);
     if (!inputfile)
     {
         std::cerr << "Error: " << inputFileName << " could not be opened" << std::endl;
-        return 1;
+        exit(1);
     }
 
-    // Convert input content to vector
     std::vector<std::string> containers;
     std::string line;
     while (std::getline(inputfile, line))
@@ -24,23 +20,16 @@ int main()
     }
     inputfile.close();
 
-    // Create compose.yml with dynamic number of containers
-    std::string header = "version: '3'\n";
-    std::string footer = "\n";
-    std::string body = "";
+    return containers;
+}
 
-    // Body will be dynamically created
-    // For postgres, there are 2 sections: containers definition and volumes definition
-
-    // First, load template for postgres
-    std::string templateFile = "template.yml";
+std::pair<std::string, std::string> readTemplateFile(const std::string &templateFile)
+{
     std::ifstream infile(templateFile);
-
     std::string serviceTemplate = "";
     std::string volumeTemplate = "";
 
-    // Read the template file by line and split by delimiter
-    line = "";
+    std::string line = "";
     bool isServicesSection = false;
     bool isVolumesSection = false;
     while (std::getline(infile, line))
@@ -58,21 +47,26 @@ int main()
         }
         if (isServicesSection)
         {
-            // Process services section
             serviceTemplate += line + "\n";
         }
         if (isVolumesSection)
         {
-            // Process volumes section
             volumeTemplate += line + "\n";
         }
     }
 
-    // Craft Dynamic Body, Replace all jinja2 variables
+    return {serviceTemplate, volumeTemplate};
+}
+
+std::string generateConfig(const std::vector<std::string> &containers, 
+                            const std::string &serviceTemplate, const std::string &volumeTemplate)
+{
     std::string serviceBody = "services:\n";
     std::string volumeBody = "volumes:\n";
+    std::string footer = "networks:\n  topicdb-cluster: {}\n";
+
     std::string jinja2Variable = "{{ container_name }}";
-    for (std::string container : containers)
+    for (const std::string &container : containers)
     {
         std::string serviceBodyTemp = serviceTemplate;
         std::string volumeBodyTemp = volumeTemplate;
@@ -85,16 +79,30 @@ int main()
         volumeBody += volumeBodyTemp;
     }
 
-    // Now craft config file
-    std::string config = header + serviceBody + volumeBody + footer;
+    return "version: '3'\n" + serviceBody + volumeBody + footer;
+}
 
-    // Save config to compose.yml
-    std::string outputFile = "compose.yml";
+void writeOutputFile(const std::string &outputFile, const std::string &config)
+{
     std::ofstream outfile(outputFile);
     outfile << config;
     outfile.close();
+}
 
-    std::cout << "compose.yml has been created successfully!" << std::endl;
+int main()
+{
+    std::string inputFileName = "input.txt";
+    std::string templateFile = "template.yml";
+    std::string outputFile = "compose.yml";
+
+    std::vector<std::string> containers = readInputFile(inputFileName);
+    std::pair<std::string, std::string> templates = readTemplateFile(templateFile);
+    std::string serviceTemplate = templates.first;
+    std::string volumeTemplate = templates.second;
+    std::string config = generateConfig(containers, serviceTemplate, volumeTemplate);
+    writeOutputFile(outputFile, config);
+
+    std::cout << outputFile << " has been created successfully!" << std::endl;
 
     return 0;
 }
