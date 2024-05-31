@@ -6,18 +6,24 @@ This repo support creating dynamic docker compose, allow users to manage multipl
 - Docker
 - Docker Compose
 
+
 ## Usage
 
-1. To create docker compose dynamically, you need to add the database names you like to `topics`.
+1. To create docker compose dynamically, you need to add the database names you like to `topics.txt`.
 Each database name should be in a new line.
 
 2. Then create the dynamic `compose.yml` file and launch the cluster with
 
 ```bash
-./install/build.sh
+./script/build.sh
 ```
 
-3. Terminate the cluster with
+3. Interact with specific database within cluster via
 ```bash
-docker compose down
+./script/interface.sh
+```
+
+4. Terminate the cluster with
+```bash
+./script/clean.sh
 ```
