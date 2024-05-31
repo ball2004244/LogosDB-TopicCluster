@@ -5,4 +5,4 @@ g++ build_compose.cpp -o build_compose
 
 ./build_compose
 
-docker-compose up -d
+docker compose up -d

@@ -1,60 +1,131 @@
 #include <pqxx/pqxx>
 #include <iostream>
 #include <string>
+#include <getopt.h>
+#include <fstream>
+#include <sstream>
 
 /*
 This file serve as the sql interface between the program and the postgres database cluster.
 It first locate the requested node, then execute the corresponding sql query to the database.
 */
 
-int main()
+// Struct for the long options
+static struct option long_options[] = {
+    {"topic", required_argument, 0, 't'},
+    {"port", required_argument, 0, 'p'},
+    {"dbname", required_argument, 0, 'd'},
+    {"user", required_argument, 0, 'u'},
+    {"password", required_argument, 0, 'w'},
+    {0, 0, 0, 0}};
+
+// Function to process the input arguments
+void processArguments(int argc, char *argv[], std::string &topic, std::string &port, std::string &dbname, std::string &username, std::string &password)
+{
+    // Default values
+    topic = "db1"; // the topic of the node, use as hostname when calling within docker network
+    port = "5432";
+    dbname = "db"; // internal database name
+    username = "user";
+    password = "password";
+
+    // Process the arguments
+    int option_index = 0;
+    int c;
+    while ((c = getopt_long(argc, argv, "t:p:d:u:w:", long_options, &option_index)) != -1)
+    {
+        switch (c)
+        {
+        case 't':
+            topic = optarg;
+            break;
+        case 'p':
+            port = optarg;
+            break;
+        case 'd':
+            dbname = optarg;
+            break;
+        case 'u':
+            username = optarg;
+            break;
+        case 'w':
+            password = optarg;
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+// Function to establish a database connection
+std::unique_ptr<pqxx::connection> establishConnection(const std::string &topic, const std::string &port, const std::string &dbname, const std::string &username, const std::string &password)
+{
+    std::string connection_string = "dbname = " + dbname + " user = " + username + " password = " + password + " host = " + topic + " port = " + port;
+
+    // Introduce a connection here
+    auto C = std::make_unique<pqxx::connection>(connection_string);
+
+    if (!C->is_open())
+    {
+        std::cerr << "Can't connect to database: " << dbname << std::endl;
+        throw std::runtime_error("Failed to establish database connection");
+    }
+
+    std::cout << "Successfully connected to database: " << dbname << std::endl;
+
+    return C;
+}
+
+// Function to execute SQL query
+void executeQuery(pqxx::connection &connection)
+{
+    // Create a transactional object
+    pqxx::work W(connection);
+
+    // Read SQL query from file
+    std::string sqlFile = "query.sql";
+    std::ifstream file(sqlFile);
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string sql = buffer.str();
+
+    // Execute SQL query
+    pqxx::result R = W.exec(sql);
+
+    // Print the result
+    std::cout << "Operation done successfully" << std::endl;
+
+    // Print whatever the query returns
+    for (auto row : R)
+    {
+        for (auto field : row)
+        {
+            std::cout << field.as<std::string>() << ' ';
+        }
+        std::cout << std::endl;
+    }
+
+    // Commit the transaction
+    W.commit();
+}
+
+int main(int argc, char *argv[])
 {
     try
     {
-        std::string network = "db_network"; // the name of the docker network
+        std::string topic, port, dbname, username, password;
 
-        std::string topic = "db1"; // the topic of the node, use as hostname when calling within docker network
-        std::string port = "5432";
+        // Process the input arguments
+        processArguments(argc, argv, topic, port, dbname, username, password);
 
-        std::string dbname = "db"; // internal database name
-        std::string username = "user";
-        std::string password = "password";
+        // Establish a database connection
+        auto connection = establishConnection(topic, port, dbname, username, password);
 
-        std::string connection_string = "dbname = " + dbname + " user = " + username + " password = " + password + " host = " + topic + " port = " + port;
+        // Execute SQL query
+        executeQuery(*connection);
 
-        // Introduce a connection here
-        pqxx::connection C(connection_string);
-
-        if (!C.is_open())
-        {
-            std::cerr << "Can't connect to database: " << dbname << std::endl;
-            return 1;
-        }
-
-        std::cout << "Opened database successfully: " << dbname << std::endl;
-
-        // Create a transactional object
-        // pqxx::work W(C);
-
-        // // Execute SQL query
-        // std::string sql = "SELECT * FROM COMPANY";
-        // pqxx::result R = W.exec(sql);
-
-        // // Print the result
-        // std::cout << "Operation done successfully" << std::endl;
-
-        // for (pqxx::result::const_iterator c = R.begin(); c != R.end(); ++c)
-        // {
-        //     std::cout << "ID = " << c[0].as<int>() << std::endl;
-        //     std::cout << "NAME = " << c[1].as<std::string>() << std::endl;
-        //     std::cout << "AGE = " << c[2].as<int>() << std::endl;
-        //     std::cout << "ADDRESS = " << c[3].as<std::string>() << std::endl;
-        //     std::cout << "SALARY = " << c[4].as<float>() << std::endl;
-        // }
-
-        // Commit the transaction
-        // W.commit();
-        C.disconnect();
+        // Disconnect from the database
+        connection->disconnect();
 
         return 0;
     }
