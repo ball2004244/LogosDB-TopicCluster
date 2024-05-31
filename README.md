@@ -2,24 +2,22 @@
 
 This repo support creating dynamic docker compose, allow users to manage multiple containers
 
-## Set up
+## Prequisitive
+- Docker
+- Docker Compose
 
-1. Compile the code
+## Usage
+
+1. To create docker compose dynamically, you need to add the database names you like to `topics`.
+Each database name should be in a new line.
+
+2. Then create the dynamic `compose.yml` file and launch the cluster with
 
 ```bash
-g++ build_compose.cpp -o build
+./install/build.sh
 ```
 
-2. Add the database names you like to `input.txt`
-
-3. Then generate the dynamic `compose.yml` file
-
+3. Terminate the cluster with
 ```bash
-./build
-```
-
-4. Launch the database cluster with
-
-```bash
-docker compose up -d
+docker compose down
 ```

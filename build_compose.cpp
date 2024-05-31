@@ -3,6 +3,13 @@
 #include <vector>
 #include <string>
 
+/*
+This file is used to generate a dynamic docker-compose file based on the input file and template file.
+The number of created containers is equal to the number of lines in the input file.
+The input file contains the names of the containers.
+The template file contains the template of the services and volumes sections of the docker-compose file.
+The output file is the generated docker-compose file.
+*/
 std::vector<std::string> readInputFile(const std::string &inputFileName)
 {
     std::ifstream inputfile(inputFileName);
@@ -91,7 +98,7 @@ void writeOutputFile(const std::string &outputFile, const std::string &config)
 
 int main()
 {
-    std::string inputFileName = "input.txt";
+    std::string inputFileName = "topics";
     std::string templateFile = "template.yml";
     std::string outputFile = "compose.yml";
 
