@@ -161,5 +161,6 @@ cython_debug/
 
 *.out
 build_compose
+compose.yml
 interface
 .vscode/

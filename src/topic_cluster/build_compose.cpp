@@ -98,7 +98,7 @@ void writeOutputFile(const std::string &outputFile, const std::string &config)
 
 int main()
 {
-    std::string inputFileName = "topics.txt";
+    std::string inputFileName = "../../inputs/topics.txt";
     std::string templateFile = "template.yml";
     std::string outputFile = "compose.yml";
 
