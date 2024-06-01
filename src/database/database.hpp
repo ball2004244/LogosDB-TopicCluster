@@ -8,6 +8,7 @@
 #include <string>
 #include <pqxx/pqxx>
 #include <memory>
+#include <algorithm>
 
 class CSVParser
 {

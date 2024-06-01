@@ -23,10 +23,14 @@ CSVParser::CSVParser(std::string filename)
         std::string field;
         std::vector<std::string> row;
 
+
         while (std::getline(ss, field, ','))
         {
+            // Remove newline character
+            field.erase(std::remove(field.begin(), field.end(), '\n'), field.end());
             row.push_back(field);
         }
+
 
         data.push_back(row);
     }
