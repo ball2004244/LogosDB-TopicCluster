@@ -9,7 +9,7 @@ COPY query.sql .
 
 RUN g++ -o debug_interface debug_interface.cpp -lpqxx -lpq
 
-ENV TOPIC=db1
+ENV TOPIC=db9
 ENV USER=user
 ENV PASSWORD=password
 ENV PORT=5432

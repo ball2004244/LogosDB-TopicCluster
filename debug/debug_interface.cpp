@@ -69,11 +69,11 @@ std::unique_ptr<pqxx::connection> establishConnection(const std::string &topic, 
 
     if (!C->is_open())
     {
-        std::cerr << "Can't connect to database: " << dbname << std::endl;
+        std::cerr << "Can't connect to database: " << topic << std::endl;
         throw std::runtime_error("Failed to establish database connection");
     }
 
-    std::cout << "Successfully connected to database: " << dbname << std::endl;
+    std::cout << "Successfully connected to database: " << topic << std::endl;
 
     return C;
 }

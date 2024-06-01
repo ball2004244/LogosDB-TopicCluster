@@ -1,10 +1,10 @@
 #! /bin/bash
-cd compose
+cd src/topic_cluster
 docker compose down
-cd ..
+cd ../..
 
-docker stop insert_interface
-docker rm -f insert_interface
+docker stop logosdb-insert-interface
+docker rm -f logosdb-insert-interface
 
-docker stop debug_interface
-docker rm -f debug_interface
+docker stop logosdb-debug-interface
+docker rm -f logosdb-debug-interface
