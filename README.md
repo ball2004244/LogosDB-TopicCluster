@@ -5,7 +5,7 @@ This repo support creating dynamic docker compose, allow users to manage multipl
 ## Prequisitive
 - Docker
 - Docker Compose
-
+- C++11
 
 ## Usage
 ### Create cluster
@@ -18,14 +18,38 @@ Each database name should be in a new line.
 ./script/build.sh
 ```
 
-3. Terminate the cluster with
+3. Full delete the cluster
 ```bash
 ./script/clean.sh
 ```
 
 ### Cluster interaction
-Interact with specific database within cluster via
+You can either insert or query data with the cluster
+
+**1. Insert**
+- Enter the target database info
+- Bring your input csv file to the `inputs` folder
+- Then insert with
 ```bash
-./script/interface.sh
+./script/insert.sh
 ```
 
+**2. Query**
+- Enter target database info
+- Query data from 1 database with
+```bash
+./script/query.sh
+```
+
+- Or you can query the whole cluster with
+```bash
+./script/query_all.sh
+```
+
+**3. Custom**
+You can also write your own SQL at `debug/query.sql`
+
+Then run custom query with
+```bash
+./script/debug.sh
+```
