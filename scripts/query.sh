@@ -12,3 +12,7 @@ docker rm -f $db
 echo "Querying data from 1 cluster's node, at" $db "..."
 # Run the Docker container and pass the db variable
 docker run --network=$network --name $db -d query_interface
+
+# Output the logs
+docker logs -f $db
+

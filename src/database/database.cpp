@@ -126,7 +126,7 @@ TopicCluster::TopicCluster(const std::string &topicFileName)
     topics = parser.getData()[0];
 }
 
-~TopicCluster::TopicCluster()
+TopicCluster::~TopicCluster()
 {
     std::cout << "Topic Cluster terminated" << std::endl;
 }
@@ -157,7 +157,7 @@ pqxx::result TopicCluster::executeQueryWithResult(const std::string &sql)
     if (connection == nullptr)
     {
         std::cerr << "Error: No connection to database" << std::endl;
-        return pqxx::result();
+        throw std::runtime_error("No connection to database");
     }
 
     return connection->executeQueryWithResult(sql);
@@ -165,6 +165,9 @@ pqxx::result TopicCluster::executeQueryWithResult(const std::string &sql)
 
 SumDB::SumDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port) : PostgresDB(dbname, username, password, host, port)
 {
+    std::string query = "CREATE TABLE IF NOT EXISTS " + dbname + " (id SERIAL PRIMARY KEY, chunkStart INT, chunkEnd INT, topic TEXT, summary TEXT, createdAt TIMESTAMP, updatedAt TIMESTAMP);";
+    executeQuery(query);
+
     std::cout << "SumDB object created" << std::endl;
 }
 

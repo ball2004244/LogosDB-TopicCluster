@@ -34,9 +34,22 @@ int main()
 
         // Extract the title row to be used as column names
         std::vector<std::string> columns = data[0];
+
         data.erase(data.begin()); // This will remove the title row from the data
+
+        // Create a table for first data
+        std::string query = "CREATE TABLE IF NOT EXISTS " + table + " (";
+        for (const auto &column : columns)
+        {
+            query += column + " TEXT, "; // Assume all columns are of type TEXT
+        }
+        query = query.substr(0, query.size() - 2) + ");";
+
+        // Execute query
+        cluster.executeQuery(query);
+
         // Reformat the data to be inserted
-        std::string query = "INSERT INTO " + table + " (";
+        query = "INSERT INTO " + table + " (";
         for (const auto &column : columns)
         {
             query += column + ", ";

@@ -27,7 +27,7 @@ public:
     PostgresDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port);
     ~PostgresDB();
     void executeQuery(const std::string &sql);
-    pxxx::result executeQueryWithResult(const std::string &sql);
+    pqxx::result executeQueryWithResult(const std::string &sql);
 
 protected:
     std::unique_ptr<pqxx::connection> connection;
@@ -40,9 +40,9 @@ public:
     TopicCluster(const std::string &topicFileName);
     ~TopicCluster();
     void setTopicNode(const std::string &topic, const std::string &port, const std::string &username, const std::string &password, const std::string &dbname = "db");
-    std::vector<string> getTopics();
+    std::vector<std::string> getTopics();
     void executeQuery(const std::string &sql);
-    pxxx::result executeQueryWithResult(const std::string &sql);
+    pqxx::result executeQueryWithResult(const std::string &sql);
 
 private:
     std::unique_ptr<PostgresDB> connection;

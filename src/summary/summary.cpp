@@ -3,6 +3,12 @@
 #include <string>
 #include <vector>
 #include <ctime>
+#include <cstdlib>
+#include <cstddef>
+#include <curl/curl.h>
+#include <json/json.h>
+#include <thread>
+#include <chrono>
 #include "database/database.hpp"
 
 /*
@@ -21,6 +27,16 @@ struct TopicNodeRow
     std::vector<std::string> keywords;
     std::time_t createdAt;
     std::time_t updatedAt;
+
+    TopicNodeRow(int id, std::string answer, std::string question, std::vector<std::string> keywords, std::time_t createdAt, std::time_t updatedAt)
+    {
+        this->id = id;
+        this->answer = answer;
+        this->question = question;
+        this->keywords = keywords;
+        this->createdAt = createdAt;
+        this->updatedAt = updatedAt;
+    }
 };
 
 struct SumDBRow
@@ -43,54 +59,155 @@ struct SumDBRow
         this->createdAt = createdAt;
         this->updatedAt = updatedAt;
     }
+};
+
+/*
+A helper function to write callback function for curl
+*/
+size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::string *userp)
+{
+    size_t totalSize = size * nmemb;
+    userp->append(static_cast<char *>(contents), totalSize);
+    return totalSize;
 }
 
 /*
-This function reads all available database names from the input file.
-Then it returns a vector of strings containing the names of the databases.
+Helper function to split string by delimiter
+
 */
-std::vector<std::string> getAllDBNames(const string &topicFileName)
+std::vector<std::string> split(const std::string &s, char delimiter)
 {
-    std::vector<std::string> topics;
-    ifstream topicFile(topicFileName);
-    if (!topicFile)
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream tokenStream(s);
+    while (std::getline(tokenStream, token, delimiter))
     {
-        cerr << "Error: " << topicFileName << " could not be opened" << endl;
-        exit(1);
+        tokens.push_back(token);
     }
-
-    std::vector<std::string> containers;
-    std::string line;
-    while (std::getline(topicFile, line))
-    {
-        containers.push_back(line);
-    }
-
-    topicFile.close();
-
-    return containers;
+    return tokens;
 }
 
 /*
-Get all data from 1 database by chunk
+Reformat all data from 1 database by chunk
 */
-struct TopicNodeRow getDBDataByChunk(const std::string &dbName, const std::string &chunkSize)
+void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data)
 {
-    struct TopicNodeRow data;
-    // TODO: To be implemented
+    for (const auto &row : result)
+    {
+        int id = row[0].as<int>();
+        std::string answer = row[1].as<std::string>();
+        std::string question = row[2].as<std::string>();
+        std::string keywordsStr = row[3].as<std::string>();
+        std::vector<std::string> keywords = split(keywordsStr, ',');
 
-    return data;
+        std::time_t createdAt = row[4].as<std::time_t>();
+        std::time_t updatedAt = row[5].as<std::time_t>();
+
+        TopicNodeRow topicNodeRow(id, answer, question, keywords, createdAt, updatedAt);
+        data.push_back(topicNodeRow);
+    }
 }
-
 /*
 Fetch data through SumAI to get chunk summary
 */
-std::string getChunkSummary(const vector<TopicNodeRow> &data)
+
+std::string getChunkSummary(const std::vector<TopicNodeRow> &data)
 {
-    // TODO: To be implemented
     // Convert data to string
-    // Call SumAI to get chunk summary
-    return "";
+    std::string dataStr = "";
+    for (const auto &row : data)
+    {
+        std::string keywordsStr = "";
+        for (const auto &keyword : row.keywords)
+        {
+            keywordsStr += keyword + " ";
+        }
+        dataStr += std::to_string(row.id) + " " + row.answer + " " + row.question + " " + keywordsStr + std::to_string(row.createdAt) + " " + std::to_string(row.updatedAt) + "\n";
+    }
+
+    // Build summary prompt
+    std::string prompt = "Summarize the following data by bullets like this:\n \
+                         - [70 % ] Data 1\n \
+                         - [20 % ] Data 2,\n \
+                            ...\n \
+                        Below are 1000 data needed to summarize :\n " +
+                         dataStr;
+
+    // Set up Gemini Service, load api from env
+    const char *api = std::getenv("GEMINI_API_KEY");
+    const std::string model = "gemini-1.0-pro";
+
+    if (api == NULL)
+    {
+        std::cerr << "API key not found" << std::endl;
+        return "";
+    }
+
+    // Initialize curl
+    CURL *curl = curl_easy_init();
+    if (!curl)
+    {
+        std::cerr << "Curl initialization failed" << std::endl;
+        return "";
+    }
+
+    std::string url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + std::string(api);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+    // Set the headers
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+    // Set the POST data
+    Json::Value root;
+    Json::Value contents;
+    Json::Value parts;
+    parts["text"] = prompt;
+    contents["parts"].append(parts);
+    root["contents"].append(contents);
+    Json::StreamWriterBuilder writer;
+    std::string postData = Json::writeString(writer, root);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
+
+    // Set the callback function
+    std::string response;
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    // Perform the request
+    CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK)
+    {
+        curl_easy_cleanup(curl);
+        throw std::runtime_error("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)));
+    }
+
+    // Parse the response
+    Json::CharReaderBuilder reader;
+    Json::Value jsonResponse;
+    std::string errors;
+    std::istringstream iss(response);
+    if (!Json::parseFromStream(reader, iss, &jsonResponse, &errors))
+        throw std::runtime_error("Failed to parse JSON response: " + errors);
+
+    if (!jsonResponse.isMember("candidates"))
+        throw std::runtime_error("JSON response does not contain 'candidates' field");
+
+    const Json::Value &candidates = jsonResponse["candidates"];
+    if (candidates.empty() || !candidates[0].isMember("content") || !candidates[0]["content"].isMember("parts"))
+        throw std::runtime_error("JSON response does not contain 'content' or 'parts' field");
+
+    const Json::Value &partsResponse = candidates[0]["content"]["parts"];
+    if (partsResponse.empty() || !partsResponse[0].isMember("text"))
+        throw std::runtime_error("JSON response does not contain 'text' field");
+
+    std::string text = partsResponse[0]["text"].asString();
+
+    // Cleanup
+    curl_easy_cleanup(curl);
+
+    return text;
 }
 
 /*
@@ -98,8 +215,7 @@ Store chunk summary to SumDB
 */
 void storeChunkSummary(const std::string &sumdbName, const std::string &summary, const std::string &topic, const std::vector<TopicNodeRow> &data)
 {
-    // TODO: To be implemented
-    // Extract necessary information from data
+    // Extract necessary information
     int chunkStart = data[0].id;
     int chunkEnd = data[data.size() - 1].id;
 
@@ -111,10 +227,77 @@ void storeChunkSummary(const std::string &sumdbName, const std::string &summary,
     // Init a connection to SumDB
     std::string host = "sumdb";
     std::string port = "5432";
-    std::string username = "username";
+    std::string username = "user";
     std::string password = "password";
     std::string dbname = "db"; // internal database name
 
-    
     // Store SumDBRow to SumDB
+    SumDB sumdb(dbname, username, password, host, port);
+    std::string query = "INSERT INTO " + sumdbName + " (chunkStart, chunkEnd, topic, summary, createdAt, updatedAt) \
+                        VALUES (" +
+                        std::to_string(sumDBRow.chunkStart) + ", " + std::to_string(sumDBRow.chunkEnd) + ", '" + sumDBRow.topic + "', '" + sumDBRow.summary + "', " + std::to_string(sumDBRow.createdAt) + ", " + std::to_string(sumDBRow.updatedAt) + ");";
+
+    sumdb.executeQuery(query);
+}
+
+//! Need to test this code snippet to ensure it works as expected
+int main()
+{
+    try
+    {
+        // Get all topics from TopicCluster
+        std::string topicFileName = "inputs/topics.txt";
+        TopicCluster cluster(topicFileName);
+        std::vector<std::string> topics = cluster.getTopics();
+
+        std::string port = "5432";
+        std::string username = "user";
+        std::string password = "password";
+        long long CHUNK_SIZE = 10000;
+
+        std::string query = "";
+        std::string table = "test"; // Assume the table name is test for all db in cluster
+        long long table_size = 0;
+        long long margin = 3 * CHUNK_SIZE; // Set margin error to 3 chunks, prevent from missing data
+        // Loop through all topics
+        for (auto &topic : topics)
+        {
+            // Init a connection
+            cluster.setTopicNode(topic, port, username, password);
+
+            query = "SELECT n_live_tup \
+                    FROM pg_stat_user_tables \
+                    WHERE relname = 'test' AND schemaname = 'public';";
+
+            // Get estimate table size
+            table_size = cluster.executeQueryWithResult(query)[0][0].as<long long>();
+
+            // Now query by chunk in each topic node, deallocate memory after each chunk
+            for (long long i = 0; i < table_size; i += CHUNK_SIZE)
+            {
+                std::vector<TopicNodeRow> data;
+                // Get data by chunk
+                query = "SELECT * FROM " + table + " LIMIT " + std::to_string(CHUNK_SIZE) + " OFFSET " + std::to_string(i) + ";";
+
+                pqxx::result result = cluster.executeQueryWithResult(query);
+
+                // Reformat data to TopicNodeRow
+                reformatChunk(result, data);
+
+                // Get chunk summary
+                std::string summary = getChunkSummary(data);
+
+                // Store chunk summary to SumDB
+                storeChunkSummary("sumdb", summary, topic, data);
+
+                // Wait for 2 seconds
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+            }
+        }
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
 }
