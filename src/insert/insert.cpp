@@ -11,6 +11,7 @@ int main()
     try
     {
         std::string filename = "inputs/input.csv";
+        std::string topicFileName = "inputs/topics.txt";
         CSVParser parser(filename);
 
         std::string topic = "db1"; // the topic of the node, use as hostname when calling within docker network
@@ -19,7 +20,8 @@ int main()
         std::string username = "user";
         std::string password = "password";
 
-        TopicCluster cluster(dbname, username, password, topic, port);
+        TopicCluster cluster(topicFileName);
+        cluster.setTopicNode(topic, port, username, password, dbname);
 
         std::vector<std::vector<std::string>> data = parser.getData();
         std::string table = "test";

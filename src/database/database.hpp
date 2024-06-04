@@ -21,22 +21,39 @@ private:
     std::vector<std::vector<std::string>> data;
 };
 
+class PostgresDB
+{
+public:
+    PostgresDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port);
+    ~PostgresDB();
+    void executeQuery(const std::string &sql);
+    pxxx::result executeQueryWithResult(const std::string &sql);
+
+protected:
+    std::unique_ptr<pqxx::connection> connection;
+};
+
+// TopicCluster manage multiple topics
 class TopicCluster
 {
 public:
-    TopicCluster(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port);
+    TopicCluster(const std::string &topicFileName);
     ~TopicCluster();
+    void setTopicNode(const std::string &topic, const std::string &port, const std::string &username, const std::string &password, const std::string &dbname = "db");
+    std::vector<string> getTopics();
     void executeQuery(const std::string &sql);
     pxxx::result executeQueryWithResult(const std::string &sql);
 
 private:
-    std::unique_ptr<pqxx::connection> connection;
+    std::unique_ptr<PostgresDB> connection;
+    std::vector<std::string> topics;
 };
 
-// TODO: Rename TopicCluster class to PostgresDB
-// TODO: Create TopicCluster class by extending PostgresDB
-// TODO: Define clustering mechanism instead of connection to 1 db in TopicCluster
-// TODO: Move topics read from build_compose.cpp to TopicCluster class
-
-// TODO: Create SumDB class by extending PostgresDB
+// Create SumDB class by extending PostgresDB
+class SumDB : public PostgresDB
+{
+public:
+    SumDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port);
+    ~SumDB();
+};
 #endif // DATABASE_H

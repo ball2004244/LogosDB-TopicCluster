@@ -11,6 +11,7 @@ int main()
     try
     {
         std::string filename = "inputs/input.csv";
+        std::string topicFileName = "inputs/topics.txt";
 
         std::string topic = "db1"; // the topic of the node, use as hostname when calling within docker network
         std::string port = "5432";
@@ -18,7 +19,8 @@ int main()
         std::string username = "user";
         std::string password = "password";
 
-        TopicCluster cluster(dbname, username, password, topic, port);
+        TopicCluster cluster(topicFileName);
+        cluster.setTopicNode(topic, port, username, password, dbname);
 
         std::string table = "test"; // Name of table to query
         std::string query = "SELECT * FROM " + table + ";";

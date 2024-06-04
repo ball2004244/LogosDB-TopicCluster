@@ -45,10 +45,10 @@ const bool CSVParser::isEmpty() const
 }
 
 /*
-Create a connection to the database cluster
+Create a connection to the database
 */
 
-TopicCluster::TopicCluster(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port)
+PostgresDB::PostgresDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port)
 
 {
     std::string connection_string = "dbname = " + dbname + " user = " + username + " password = " + password + " host = " + host + " port = " + port;
@@ -65,7 +65,7 @@ TopicCluster::TopicCluster(const std::string &dbname, const std::string &usernam
     std::cout << "Successfully connected to database: " << dbname << std::endl;
 }
 
-void TopicCluster::executeQuery(const std::string &sql)
+void PostgresDB::executeQuery(const std::string &sql)
 {
     // Create a transactional object
     pqxx::work W(*connection);
@@ -92,7 +92,7 @@ void TopicCluster::executeQuery(const std::string &sql)
 }
 
 // Return the pxqq output after query
-pqxx::result TopicCluster::executeQueryWithResult(const std::string &sql)
+pqxx::result PostgresDB::executeQueryWithResult(const std::string &sql)
 {
     // Create a transactional object
     pqxx::work W(*connection);
@@ -106,8 +106,69 @@ pqxx::result TopicCluster::executeQueryWithResult(const std::string &sql)
     return R;
 }
 
-TopicCluster::~TopicCluster()
+PostgresDB::~PostgresDB()
 {
     connection->disconnect();
     std::cout << "Disconnected from database" << std::endl;
+}
+
+TopicCluster::TopicCluster(const std::string &topicFileName)
+{
+    // Read topics from file
+    CSVParser parser(topicFileName);
+
+    if (parser.isEmpty())
+    {
+        std::cerr << "Error: " << topicFileName << " could not be opened" << std::endl;
+        exit(1);
+    }
+
+    topics = parser.getData()[0];
+}
+
+~TopicCluster::TopicCluster()
+{
+    std::cout << "Topic Cluster terminated" << std::endl;
+}
+
+void TopicCluster::setTopicNode(const std::string &topic, const std::string &port, const std::string &username, const std::string &password, const std::string &dbname)
+{
+    connection = std::make_unique<PostgresDB>(dbname, username, password, topic, port);
+}
+
+std::vector<std::string> TopicCluster::getTopics()
+{
+    return topics;
+}
+
+void TopicCluster::executeQuery(const std::string &sql)
+{
+    if (connection == nullptr)
+    {
+        std::cerr << "Error: No connection to database" << std::endl;
+        return;
+    }
+
+    connection->executeQuery(sql);
+}
+
+pqxx::result TopicCluster::executeQueryWithResult(const std::string &sql)
+{
+    if (connection == nullptr)
+    {
+        std::cerr << "Error: No connection to database" << std::endl;
+        return pqxx::result();
+    }
+
+    return connection->executeQueryWithResult(sql);
+}
+
+SumDB::SumDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port) : PostgresDB(dbname, username, password, host, port)
+{
+    std::cout << "SumDB object created" << std::endl;
+}
+
+SumDB::~SumDB()
+{
+    std::cout << "SumDB object destroyed" << std::endl;
 }
