@@ -23,14 +23,12 @@ CSVParser::CSVParser(std::string filename)
         std::string field;
         std::vector<std::string> row;
 
-
         while (std::getline(ss, field, ','))
         {
             // Remove newline character
             field.erase(std::remove(field.begin(), field.end(), '\n'), field.end());
             row.push_back(field);
         }
-
 
         data.push_back(row);
     }
@@ -91,6 +89,21 @@ void TopicCluster::executeQuery(const std::string &sql)
 
     // Commit the transaction
     W.commit();
+}
+
+// Return the pxqq output after query
+pqxx::result TopicCluster::executeQueryWithResult(const std::string &sql)
+{
+    // Create a transactional object
+    pqxx::work W(*connection);
+
+    // Execute SQL query
+    pqxx::result R = W.exec(sql);
+
+    // Commit the transaction
+    W.commit();
+
+    return R;
 }
 
 TopicCluster::~TopicCluster()

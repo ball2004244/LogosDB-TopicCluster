@@ -64,15 +64,11 @@ int main()
         cluster.executeQuery(query);
 
         std::cout << "Data inserted successfully" << std::endl;
-
-        // Check by querying the data
-        query = "SELECT * FROM " + table + ";";
-        cluster.executeQuery(query);
-
         return 0;
     }
     catch (const std::exception &e)
     {
         std::cerr << e.what() << std::endl;
+        return 1;
     }
 }

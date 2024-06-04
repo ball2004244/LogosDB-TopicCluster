@@ -27,6 +27,7 @@ public:
     TopicCluster(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port);
     ~TopicCluster();
     void executeQuery(const std::string &sql);
+    pxxx::result executeQueryWithResult(const std::string &sql);
 
 private:
     std::unique_ptr<pqxx::connection> connection;

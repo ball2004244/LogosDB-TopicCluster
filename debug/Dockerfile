@@ -4,12 +4,12 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y libpqxx-dev
 
-COPY debug_interface.cpp .
-COPY query.sql .
+COPY debug/debug_interface.cpp .
+COPY debug/query.sql .
 
 RUN g++ -o debug_interface debug_interface.cpp -lpqxx -lpq
 
-ENV TOPIC=db9
+ENV TOPIC=db1
 ENV USER=user
 ENV PASSWORD=password
 ENV PORT=5432
