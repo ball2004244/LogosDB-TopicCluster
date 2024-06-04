@@ -33,4 +33,10 @@ private:
     std::unique_ptr<pqxx::connection> connection;
 };
 
+// TODO: Rename TopicCluster class to PostgresDB
+// TODO: Create TopicCluster class by extending PostgresDB
+// TODO: Define clustering mechanism instead of connection to 1 db in TopicCluster
+// TODO: Move topics read from build_compose.cpp to TopicCluster class
+
+// TODO: Create SumDB class by extending PostgresDB
 #endif // DATABASE_H
