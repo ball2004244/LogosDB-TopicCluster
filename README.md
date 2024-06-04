@@ -41,11 +41,6 @@ You can either insert or query data with the cluster
 ./script/query.sh
 ```
 
-- Or you can query the whole cluster with
-```bash
-./script/query_all.sh
-```
-
 **3. Custom**
 You can also write your own SQL at `debug/query.sql`
 
@@ -53,3 +48,10 @@ Then run custom query with
 ```bash
 ./script/debug.sh
 ```
+
+### Generate SumDB
+SumDB acts as a table of content for topic cluster, make querying extremely fast. To create SumDB,
+first you need to copy `.env.copy` to a new file called `.env` and fill out your Google Gemini API.
+
+Then, run `./scripts/summary.sh`, which will introduce a summary interface into the TopicCluster, then summarize all data by chunk. *Note: This process will take time*
+
