@@ -11,8 +11,8 @@ docker rm -f logosdb-insert-interface
 docker stop logosdb-query-interface
 docker rm -f logosdb-query-interface
 
-docker stop logosdb-debug-interface
-docker rm -f logosdb-debug-interface
+docker stop logosdb-custom-interface
+docker rm -f logosdb-custom-interface
 
 echo "Terminate sumdb"
 docker stop logosdb-sumdb

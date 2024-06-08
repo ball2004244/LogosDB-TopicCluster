@@ -9,7 +9,7 @@
 This file serve as the sql interface between the program and the postgres database cluster.
 It first locate the requested node, then execute the corresponding sql query to the database.
 
-! USE FOR DEBUGGING PURPOSE ONLY
+! USE TO WRITE CUSTOM SQL QUERY INTO THE CLUSTER
 */
 
 // Struct for the long options

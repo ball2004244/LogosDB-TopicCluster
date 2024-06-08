@@ -21,6 +21,11 @@ query = (
         'Answer',
         'Category'
     ])
+    .rename({
+        'Question': 'question',
+        'Answer': 'answer',
+        'Category': 'topic'
+    })
 )
 
 df = query.collect()
@@ -31,7 +36,7 @@ df.write_csv(out_csv_path)
 
 # write distinct categories to topics.txt, each line is a topic
 print('Writing topics.txt...')
-categories = df['Category'].unique()
+categories = df['topic'].unique().to_list()
 
 # convert all space to dash in category because docker command does not accept space
 categories = [cat.strip().replace(' ', '-') for cat in categories]

@@ -12,6 +12,7 @@
 
 class CSVParser
 {
+// TODO: Implement getDataByChunk to handle large data
 public:
     CSVParser(std::string filename);
     const std::vector<std::vector<std::string>> &getData() const;
