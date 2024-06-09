@@ -4,6 +4,10 @@ echo "Terminate summary interface"
 docker stop logosdb-summary
 docker rm -f logosdb-summary
 
+echo "Terminate auto insert interface"
+docker stop logosdb-auto-insert
+docker rm -f logosdb-auto-insert
+
 echo "Stopping and removing all other interfaces"
 docker stop logosdb-insert-interface
 docker rm -f logosdb-insert-interface

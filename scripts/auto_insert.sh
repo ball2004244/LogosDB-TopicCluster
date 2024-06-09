@@ -1,6 +1,6 @@
 #!/bin/bash
 # Insert data dynamically into every node in the cluster
-db="logosdb-auto-insert-interface"
+db="logosdb-auto-insert"
 network="topic_cluster_topicdb-cluster"
 
 # Build the Docker image
