@@ -1,8 +1,9 @@
-# This file preprocesses data to ready for import into TopicCluster
-# It will takes user's csv, then generates 2 files: input.csv and topics.txt
 import polars as pl
 import os
 import time
+
+# This file preprocesses data to ready for import into TopicCluster
+# It will takes user's csv, then generates 2 files: input.csv and topics.txt
 
 input_dir = "inputs/"
 input_file = "single_qna.csv"
@@ -26,6 +27,9 @@ query = (
         'Answer': 'answer',
         'Category': 'topic'
     })
+    .filter(pl.col("topic").is_not_null())  # Filter out rows with empty topic value
+    .with_columns(pl.col('topic')
+    .map_elements(lambda x: x.replace(' ', '-'), return_dtype=pl.Utf8).alias('topic')) # Replace space with dash in topic
 )
 
 df = query.collect()
@@ -36,12 +40,11 @@ df.write_csv(out_csv_path)
 
 # write distinct categories to topics.txt, each line is a topic
 print('Writing topics.txt...')
-categories = df['topic'].unique().to_list()
 
-# convert all space to dash in category because docker command does not accept space
-categories = [cat.strip().replace(' ', '-') for cat in categories]
+# Write topics to txt file
+topics = df['topic'].unique().to_list()
 with open(out_txt_path, 'w') as f:
-    for cat in categories:
-        f.write(f'{cat}\n')
+    for topic in topics:
+        f.write(f'{topic}\n')
 
 print(f'Takes {time.perf_counter() - start} seconds to process')

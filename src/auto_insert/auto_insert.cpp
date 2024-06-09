@@ -9,8 +9,25 @@ This file accept data from csv and insert it to db cluster
 The data will be routed to the corresponding topic node
 */
 
+//A helper function to escape char before insert to db
+std::string escape(const std::string &s)
+{
+    std::string result;
+    for (char c : s)
+    {
+        switch (c)
+        {
+            case '\'': result += "''"; break; // Escape single quote with another single quote
+            case '\"': result += "\\\""; break; // Escape double quote
+            case '\\': result += "\\\\"; break; // Escape backslash
+            default: result += c;
+        }
+    }
+    return result;
+}
+
 // A helper function to insert data to 1 specific topic node
-void insertData(std::string topic, std::string port, std::string username, std::string password, std::string table, std::vector<std::vector<std::string>> data, TopicCluster &cluster)
+void insertData(std::string topic, std::string port, std::string username, std::string password, std::string table, std::vector<std::vector<std::string>> data, TopicCluster &cluster, std::vector<std::string> columns)
 {
     std::cout << "Inserting data to topic node: " << topic << std::endl;
     cluster.setTopicNode(topic, port, username, password);
@@ -20,11 +37,6 @@ void insertData(std::string topic, std::string port, std::string username, std::
         throw std::invalid_argument("No data to insert");
         return;
     }
-
-    // Extract the title row to be used as column names
-    std::vector<std::string> columns = data[0];
-
-    data.erase(data.begin()); // This will remove the title row from the data
 
     // Create a table
     std::string query = "CREATE TABLE IF NOT EXISTS " + table + " (";
@@ -52,7 +64,7 @@ void insertData(std::string topic, std::string port, std::string username, std::
 
         for (const auto &field : row)
         {
-            query += "'" + field + "', ";
+            query += "'" + escape(field) + "', ";
         }
 
         // Remove the last comma and space
@@ -152,6 +164,7 @@ int main()
         std::string topicFileName = "inputs/topics.txt";
         CSVParser parser(filename);
         std::vector<std::vector<std::string>> data = parser.getData();
+        std::vector<std::string> columns = data[0];
 
         // Then we need to classify the data
         std::map<std::string, std::vector<std::vector<std::string>>> dataByTopic = reformatData(data);
@@ -168,7 +181,7 @@ int main()
         // Now loop through the data and insert it to the database by topic
         std::cout << "Start Inserting data to cluster" << std::endl;
         for (const auto &[topic, data] : dataByTopic)
-            insertData(topic, port, username, password, table, data, cluster);
+            insertData(topic, port, username, password, table, data, cluster, columns);
         return 0;
     }
     catch (const std::exception &e)

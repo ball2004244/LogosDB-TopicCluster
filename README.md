@@ -6,7 +6,7 @@ This repo support creating dynamic docker compose, allow users to manage multipl
 
 - Docker
 - Docker Compose
-- C++11
+- C++17
 
 ## Usage
 

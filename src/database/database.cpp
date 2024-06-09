@@ -22,14 +22,34 @@ CSVParser::CSVParser(std::string filename)
         std::istringstream ss(line);
         std::string field;
         std::vector<std::string> row;
+        bool inQuotes = false;
 
-        while (std::getline(ss, field, ','))
+        std::ostringstream fieldStream;
+        for (char ch : line)
         {
-            // Remove newline character
-            field.erase(std::remove(field.begin(), field.end(), '\n'), field.end());
-            row.push_back(field);
+            switch (ch)
+            {
+                case ',':
+                    if (inQuotes)
+                    {
+                        fieldStream << ch;
+                    }
+                    else
+                    {
+                        row.push_back(fieldStream.str());
+                        fieldStream.str("");
+                        fieldStream.clear();
+                    }
+                    break;
+                case '\"':
+                    inQuotes = !inQuotes;
+                    break;
+                default:
+                    fieldStream << ch;
+                    break;
+            }
         }
-
+        row.push_back(fieldStream.str());
         data.push_back(row);
     }
 }
