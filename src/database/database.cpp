@@ -69,61 +69,97 @@ Create a connection to the database
 */
 
 PostgresDB::PostgresDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port)
-
 {
     std::string connection_string = "dbname = " + dbname + " user = " + username + " password = " + password + " host = " + host + " port = " + port;
 
-    // Introduce a connection here
-    connection = std::make_unique<pqxx::connection>(connection_string);
+    try {
+        // Introduce a connection here
+        connection = std::make_unique<pqxx::connection>(connection_string);
 
-    if (!connection->is_open())
-    {
-        std::cerr << "Can't connect to database: " << dbname << std::endl;
+        if (!connection->is_open())
+        {
+            std::cerr << "Can't connect to database: " << dbname << std::endl;
+            throw std::runtime_error("Failed to establish database connection");
+        }
+
+        std::cout << "Successfully connected to database: " << dbname << std::endl;
+    }
+    catch (const pqxx::broken_connection &e) {
+        std::cerr << "Connection error: " << e.what() << std::endl;
         throw std::runtime_error("Failed to establish database connection");
     }
-
-    std::cout << "Successfully connected to database: " << dbname << std::endl;
+    catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        throw;
+    }
 }
 
 void PostgresDB::executeQuery(const std::string &sql)
 {
-    // Create a transactional object
-    pqxx::work W(*connection);
-
-    // Execute SQL query
-    pqxx::result R = W.exec(sql);
-
-    // Print the result
-    std::cout << "Operation done successfully" << std::endl;
-
-    // Print whatever the query returns
-    std::cout << "Query result: " << std::endl;
-    for (auto row : R)
+    try
     {
-        for (auto field : row)
+        // Create a transactional object
+        pqxx::work W(*connection);
+
+        // Execute SQL query
+        pqxx::result R = W.exec(sql);
+
+        // Print the result
+        std::cout << "Operation done successfully" << std::endl;
+
+        // Print whatever the query returns
+        std::cout << "Query result: " << std::endl;
+        for (auto row : R)
         {
-            std::cout << field.as<std::string>() << ' ';
+            for (auto field : row)
+            {
+                std::cout << field.as<std::string>() << ' ';
+            }
+            std::cout << std::endl;
         }
-        std::cout << std::endl;
+
+        // Commit the transaction
+        W.commit();
     }
-
-    // Commit the transaction
-    W.commit();
+    catch (const pqxx::sql_error &e)
+    {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+        std::cerr << "Query was: " << e.query() << std::endl;
+        throw std::runtime_error("Failed to execute SQL query");
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Error: " << e.what() << std::endl;
+        throw;
+    }
 }
-
 // Return the pxqq output after query
 pqxx::result PostgresDB::executeQueryWithResult(const std::string &sql)
 {
-    // Create a transactional object
-    pqxx::work W(*connection);
+    try
+    {
+        // Create a transactional object
+        pqxx::work W(*connection);
 
-    // Execute SQL query
-    pqxx::result R = W.exec(sql);
+        // Execute SQL query
+        pqxx::result R = W.exec(sql);
 
-    // Commit the transaction
-    W.commit();
+        // Commit the transaction
+        W.commit();
 
-    return R;
+        return R;
+    }
+    catch (const pqxx::sql_error &e)
+    {
+        std::cerr << "SQL error: " << e.what() << std::endl;
+        std::cerr << "Query was: " << e.query() << std::endl;
+        throw std::runtime_error("Failed to execute SQL query");
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Error: " << e.what() << std::endl;
+        throw;
+    }
 }
 
 PostgresDB::~PostgresDB()
@@ -153,9 +189,17 @@ TopicCluster::~TopicCluster()
 
 void TopicCluster::setTopicNode(const std::string &topic, const std::string &port, const std::string &username, const std::string &password, const std::string &dbname)
 {
-    connection = std::make_unique<PostgresDB>(dbname, username, password, topic, port);
-}
+    // Disconnect previous connection if it exists
+    std::cout << "Setting topic node: " << topic << std::endl;
+    if (connection != nullptr) {
+        std::cout << "Found existing connection, disconnecting..." << std::endl;
+        connection->disconnect();
+    }
 
+    // Initialize new connection
+    connection = std::make_unique<PostgresDB>(dbname, username, password, topic, port);
+    std::cout << "New connection established" << std::endl;
+}
 std::vector<std::string> TopicCluster::getTopics()
 {
     return topics;

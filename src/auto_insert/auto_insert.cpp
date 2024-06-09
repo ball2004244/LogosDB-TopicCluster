@@ -167,6 +167,7 @@ int main()
         std::vector<std::string> columns = data[0];
 
         // Then we need to classify the data
+        std::cout << "Classifying data" << std::endl;
         std::map<std::string, std::vector<std::vector<std::string>>> dataByTopic = reformatData(data);
 
         // Reclaim mem for data
@@ -178,6 +179,7 @@ int main()
         std::string password = "password";
         std::string table = "test"; // Assume the table name is test
         TopicCluster cluster(topicFileName);
+        
         // Now loop through the data and insert it to the database by topic
         std::cout << "Start Inserting data to cluster" << std::endl;
         for (const auto &[topic, data] : dataByTopic)
