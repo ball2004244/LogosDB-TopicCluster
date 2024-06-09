@@ -12,6 +12,7 @@ out_txt = 'topics.txt'
 input_path = os.path.join(input_dir, input_file)
 out_csv_path = os.path.join(input_dir, out_csv)
 out_txt_path = os.path.join(input_dir, out_txt)
+BATCH_SIZE = 1000
 
 start = time.perf_counter()
 print(f'Reformatting {input_file}')
@@ -32,17 +33,15 @@ query = (
     .map_elements(lambda x: x.replace(' ', '-'), return_dtype=pl.Utf8).alias('topic')) # Replace space with dash in topic
 )
 
-df = query.collect()
-
 # Write new data to output csv
 print(f'Save new data to {out_csv}...')
-df.write_csv(out_csv_path)
-
+query.sink_csv(out_csv_path, batch_size=BATCH_SIZE)
 # write distinct categories to topics.txt, each line is a topic
 print('Writing topics.txt...')
 
 # Write topics to txt file
-topics = df['topic'].unique().to_list()
+unique_topics = query.select('topic').collect()
+topics = unique_topics['topic'].unique().to_list()
 with open(out_txt_path, 'w') as f:
     for topic in topics:
         f.write(f'{topic}\n')
