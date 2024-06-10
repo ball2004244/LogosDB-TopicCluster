@@ -40,6 +40,4 @@ plot_path = 'topics.png'
 sns.set_theme(style="darkgrid")
 sns.set(rc={'figure.figsize':(19.2, 10.8)})
 sns.set_context("paper", font_scale=1.5)
-sns.barplot(x=list(topics.values()), y=list(topics.keys()))
-sns.get_figure()
-sns.savefig(plot_path)
+sns.barplot(x=list(topics.values()), y=list(topics.keys())).get_figure().savefig(plot_path)
