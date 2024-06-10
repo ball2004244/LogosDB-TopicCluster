@@ -162,10 +162,16 @@ pqxx::result PostgresDB::executeQueryWithResult(const std::string &sql)
     }
 }
 
+void PostgresDB::disconnect() {
+    if (connection->is_open()) {
+        connection->disconnect();
+        std::cout << "Disconnected from database" << std::endl;
+    }
+}
+
 PostgresDB::~PostgresDB()
 {
-    connection->disconnect();
-    std::cout << "Disconnected from database" << std::endl;
+    disconnect();
 }
 
 TopicCluster::TopicCluster(const std::string &topicFileName)

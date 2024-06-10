@@ -29,6 +29,7 @@ public:
     ~PostgresDB();
     void executeQuery(const std::string &sql);
     pqxx::result executeQueryWithResult(const std::string &sql);
+    void disconnect();
 
 protected:
     std::unique_ptr<pqxx::connection> connection;
