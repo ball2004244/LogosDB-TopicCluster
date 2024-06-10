@@ -26,38 +26,18 @@ std::string escape(const std::string &s)
     return result;
 }
 
-// A helper function to insert data to 1 specific topic node
-void insertData(std::string topic, std::string port, std::string username, std::string password, std::string table, std::vector<std::vector<std::string>> data, TopicCluster &cluster, std::vector<std::string> columns)
+// A helper function to insert data in batch
+void insertBatchData(std::string table, std::vector<std::string> columns, std::vector<std::vector<std::string>> data, TopicCluster &cluster)
 {
-    std::cout << "Inserting data to topic node: " << topic << std::endl;
-    cluster.setTopicNode(topic, port, username, password);
-
-    if (data.empty())
-    {
-        throw std::invalid_argument("No data to insert");
-        return;
-    }
-
-    // Create a table
-    std::string query = "CREATE TABLE IF NOT EXISTS " + table + " (";
-    for (const auto &column : columns)
-    {
-        query += column + " TEXT, "; // Assume all columns are of type TEXT
-    }
-    query = query.substr(0, query.size() - 2) + ");";
-
-    // Execute query
-    cluster.executeQuery(query);
-
     // Reformat the data to be inserted
-    query = "INSERT INTO " + table + " (";
+    std::string query = "INSERT INTO " + table + " ("; // Create the query
     for (const auto &column : columns)
     {
         query += column + ", ";
     }
     query = query.substr(0, query.size() - 2) + ") VALUES ";
 
-    // Reformat the data to be inserted
+    // Insert data in batches
     for (const auto &row : data)
     {
         query += "(";
@@ -78,8 +58,49 @@ void insertData(std::string topic, std::string port, std::string username, std::
 
     // Execute query
     cluster.executeQuery(query);
+}
 
-    std::cout << "Data inserted successfully" << std::endl;
+// A helper function to insert data to 1 specific topic node
+void insertData(std::string topic, std::string port, std::string username, std::string password, std::string table, std::vector<std::vector<std::string>> data, TopicCluster &cluster, std::vector<std::string> columns)
+{
+    int BATCH_SIZE = 10000;
+    std::cout << "Inserting data to topic node: " << topic << std::endl;
+    cluster.setTopicNode(topic, port, username, password);
+
+    if (data.empty())
+    {
+        throw std::invalid_argument("No data to insert");
+        return;
+    }
+
+    // Create a table
+    std::string query = "CREATE TABLE IF NOT EXISTS " + table + " (";
+    for (const auto &column : columns)
+    {
+        query += column + " TEXT, "; // Assume all columns are of type TEXT
+    }
+    query = query.substr(0, query.size() - 2) + ");";
+
+    // Execute query
+    cluster.executeQuery(query);
+
+    // Insert data in batches
+    for (int i = 0; i < data.size(); i += BATCH_SIZE)
+    {
+        std::cout << "Inserting batch " << i / BATCH_SIZE + 1 << " of " << (data.size() + BATCH_SIZE - 1) / BATCH_SIZE << "(Batch size: " << BATCH_SIZE << ")" << std::endl;
+        int endIdx = std::min(i + BATCH_SIZE, (int)data.size());
+
+        std::vector<std::vector<std::string>> batch;
+        for (int j = i; j < endIdx; j++)
+            batch.push_back(data[j]);
+
+        insertBatchData(table, columns, batch, cluster);
+
+        // Clear the batch
+        std::vector<std::vector<std::string>>().swap(batch);
+
+        std::cout << "Batch " << i / BATCH_SIZE + 1 << " inserted successfully" << std::endl;
+    }
 }
 
 // TODO: Replace this function with the actual classification model
