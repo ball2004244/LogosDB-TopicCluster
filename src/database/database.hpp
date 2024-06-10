@@ -42,6 +42,7 @@ public:
     TopicCluster(const std::string &topicFileName);
     ~TopicCluster();
     void setTopicNode(const std::string &topic, const std::string &port, const std::string &username, const std::string &password, const std::string &dbname = "db");
+    void resetTopicNode();
     std::vector<std::string> getTopics();
     void executeQuery(const std::string &sql);
     pqxx::result executeQueryWithResult(const std::string &sql);

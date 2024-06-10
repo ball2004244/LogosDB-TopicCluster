@@ -101,6 +101,9 @@ void insertData(std::string topic, std::string port, std::string username, std::
 
         std::cout << "Batch " << i / BATCH_SIZE + 1 << " inserted successfully" << std::endl;
     }
+    cluster.resetTopicNode();
+
+    
 }
 
 // TODO: Replace this function with the actual classification model

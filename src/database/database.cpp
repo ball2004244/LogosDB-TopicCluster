@@ -206,6 +206,19 @@ void TopicCluster::setTopicNode(const std::string &topic, const std::string &por
     connection = std::make_unique<PostgresDB>(dbname, username, password, topic, port);
     std::cout << "New connection established" << std::endl;
 }
+
+void TopicCluster::resetTopicNode()
+{
+    // This identify if the connection is already set, then disconnect it
+    if (connection != nullptr) {
+        std::cout << "Found existing connection, disconnecting..." << std::endl;
+        connection->disconnect();
+        connection = nullptr;
+    }
+
+    std::cout << "Disconnected from current node" << std::endl;
+}
+
 std::vector<std::string> TopicCluster::getTopics()
 {
     return topics;
