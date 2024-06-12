@@ -166,4 +166,5 @@ interface
 .vscode/
 *.csv
 *.txt
+!requirements.txt
 *.png
