@@ -21,10 +21,15 @@ This repo support creating dynamic docker compose, allow users to manage multipl
 ./script/build.sh
 ```
 
-3. Full delete the cluster
+3. Delete the cluster
 
 ```bash
 ./script/clean.sh
+```
+
+4. Full clear Docker with
+```bash
+docker system prune -a --volumes
 ```
 
 ### Cluster interaction
