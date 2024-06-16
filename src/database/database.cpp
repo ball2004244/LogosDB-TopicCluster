@@ -172,8 +172,10 @@ void PostgresDB::executeQuery(const std::string &sql)
     }
     catch (const pqxx::sql_error &e)
     {
+        // Output to 1k word of query
+        std::string query = e.query();
+        std::cout << "Query was: " << query.substr(0, 1000) << std::endl;
         std::cerr << "SQL error: " << e.what() << std::endl;
-        std::cerr << "Query was: " << e.query() << std::endl;
         throw std::runtime_error("Failed to execute SQL query");
     }
     catch (const std::exception &e)
@@ -200,8 +202,9 @@ pqxx::result PostgresDB::executeQueryWithResult(const std::string &sql)
     }
     catch (const pqxx::sql_error &e)
     {
+        std::string query = e.query();
+        std::cout << "Query was: " << query.substr(0, 1000) << std::endl;
         std::cerr << "SQL error: " << e.what() << std::endl;
-        std::cerr << "Query was: " << e.query() << std::endl;
         throw std::runtime_error("Failed to execute SQL query");
     }
     catch (const std::exception &e)

@@ -35,7 +35,7 @@ query = (
 
 # Write new data to output csv
 print(f'Save new data to {out_csv}...')
-query.sink_csv(out_csv_path, batch_size=BATCH_SIZE)
+query.sink_csv(out_csv_path, batch_size=BATCH_SIZE, include_header=False)
 # write distinct categories to topics.txt, each line is a topic
 print('Writing topics.txt...')
 

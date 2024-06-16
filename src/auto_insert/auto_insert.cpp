@@ -4,6 +4,7 @@
 #include <map>
 #include <chrono>
 #include <ctime>
+#include <iomanip>
 #include "database/database.hpp"
 
 /*
@@ -18,12 +19,11 @@ std::string toPostgresArray(const std::string& s)
     size_t end = s.find(",");
     while (end != std::string::npos)
     {
-        result += s.substr(start, end - start) + ", ";
+        result += s.substr(start, end - start) + ",";
         start = end + 1;
         end = s.find(",", start);
     }
-    result += s.substr(start, end);
-    result += "}";
+    result += s.substr(start, end - start) + "}";
     return result;
 }
 
@@ -48,40 +48,38 @@ std::string escape(const std::string &s)
 template <typename T>
 void insertBatchData(std::string table, std::vector<std::string> columns, std::vector<std::vector<T>> data, TopicCluster &cluster)
 {
-    // Reformat the data to be inserted
-    std::string query = "INSERT INTO " + table + " ("; // Create the query
+    std::string query = "INSERT INTO " + table + " (";
     for (const auto &column : columns)
     {
         query += column + ", ";
     }
     query = query.substr(0, query.size() - 2) + ") VALUES ";
 
-    // Insert data in batches
     for (const auto &row : data)
     {
         query += "(";
 
         for (const auto &field : row)
-            query += "'" + escape(field) + "', ";
+        {
+            if (field.size() >= 2 && field.front() == '{' && field.back() == '}')
+                query += "'" + field + "', "; // Dont do escape for array
+            else
+                query += "'" + escape(field) + "', ";
+        }
 
-        // Remove the last comma and space
-        query = query.substr(0, query.size() - 2);
-
-        query += "), ";
+        query = query.substr(0, query.size() - 2) + "), ";
     }
 
-    // Remove the last comma and space
     query = query.substr(0, query.size() - 2) + ";";
 
-    // Execute query
+    // Print first 1k characters of the query
+    // std::cout << "Executing query: " << query.substr(0, 1000) << std::endl;
     cluster.executeQuery(query);
 }
 
 // A helper function to insert data to 1 specific topic node
 void insertData(std::string topic, std::string port, std::string username, std::string password, std::string table, std::vector<std::vector<std::string>> data, TopicCluster &cluster) {
-    // Fixed schema for Topic Node
-    std::vector<std::string> columns = {"question", "answer", "keywords", "updatedAt"}; // Id is auto generated
-    int BATCH_SIZE = 1000;
+    int BATCH_SIZE = 10000;
     std::cout << "Inserting data to topic node: " << topic << std::endl;
     cluster.setTopicNode(topic, port, username, password);
 
@@ -92,20 +90,16 @@ void insertData(std::string topic, std::string port, std::string username, std::
     }
 
     // Create a table
-    std::string query = "CREATE TABLE IF NOT EXISTS " + table + " (id SERIAL PRIMARY KEY, ";
-    for (const auto &column : columns)
-    {
-        if (column == "updatedAt") {
-            query += column + " TIMESTAMP, "; // Assume updatedAt is of type TIMESTAMP
-        } else if (column == "keywords") {
-            query += column + " TEXT[], "; // Assume keywords is an array of TEXT
-        } else {
-            query += column + " TEXT, "; // Assume all other columns are of type TEXT
-        }
-    }
-    query = query.substr(0, query.size() - 2) + ");";
+    // Hardcoded columns for now
+    std::vector<std::string> columns = {"question", "answer", "keywords", "updatedAt"};
+    std::string query = "CREATE TABLE IF NOT EXISTS " 
+                        + table
+                        + " (id SERIAL PRIMARY KEY, "
+                        + columns[0] + " TEXT, "
+                        + columns[1] + " TEXT, "
+                        + columns[2] + " TEXT[], "
+                        + columns[3] + " TIMESTAMP);";
 
-    // Execute query
     cluster.executeQuery(query);
 
     // Insert data in batches
@@ -155,7 +149,7 @@ std::string getKeywords(std::vector<std::string> data)
         throw std::invalid_argument("No data to extract keywords");
     }
 
-    return "kw1, kw2, kw3, kw4, kw5";
+    return "kw1,kw2,kw3,kw4,kw5";
 }
 
 // After classification, we need to reformat the data
@@ -172,30 +166,33 @@ std::map<std::string, std::vector<std::vector<std::string>>> reformatData(std::v
     std::map<std::string, std::vector<std::vector<std::string>>> dataByTopic;
 
     // Populate the map
-    for (const auto &row : data)
+    for (auto &row : data)
     {
-        std::string topic = classifyInput(row, 2); // Assume the topic is in the 3rd column
+        int topicIdx = 2; // Assume topic is in 3rd column
+        std::string topic = classifyInput(row, topicIdx);
         if (topic.empty())
             throw std::invalid_argument("Empty topic from classification");
-
+    
         if (dataByTopic.find(topic) == dataByTopic.end())
             dataByTopic[topic] = std::vector<std::vector<std::string>>();
 
-        // For each row, also extract keywords and current time by push at the end of the row
-        std::string keywords = getKeywords(row);
-        std::vector<std::string> modifiedRow = row;
+        // For each row, first remove topic column
+        row.erase(row.begin() + topicIdx);
 
-        // Get current time
+        // Then add 2 more columns for keywords and current time
+        std::string keywords = getKeywords(row);
         std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        std::string currentTime = std::ctime(&now);
-        currentTime.pop_back(); // Remove the newline character
+        std::tm* tm = std::localtime(&now);
+        std::stringstream ss;
+        ss << std::put_time(tm, "%Y-%m-%d %H:%M:%S"); // Format time as "YYYY-MM-DD HH:MI:SS"
+        std::string currentTime = ss.str();
 
         // Add keywords and current time to the row
-        modifiedRow.insert(modifiedRow.end(), {keywords, currentTime});
-        dataByTopic[topic].push_back(modifiedRow);
+        row.insert(row.end(), {keywords, currentTime});
+        dataByTopic[topic].push_back(row);
 
         // Clean up memory
-        std::vector<std::string>().swap(modifiedRow);
+        std::vector<std::string>().swap(row);
     }
 
     // Now the data is sorted based on the topic
@@ -221,7 +218,7 @@ int main()
 
         // Read and process the data in chunks
         std::vector<std::vector<std::string>> chunk;
-        int CHUNK_SIZE = 10000; // Adjust this value based on your system's memory capacity
+        int CHUNK_SIZE = 100000; // Adjust this value based on your system's memory capacity
         while (parser.readChunk(chunk, CHUNK_SIZE))
         {
             // Reformat the data
