@@ -299,9 +299,9 @@ pqxx::result TopicCluster::executeQueryWithResult(const std::string &sql)
     return connection->executeQueryWithResult(sql);
 }
 
-SumDB::SumDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port) : PostgresDB(dbname, username, password, host, port)
+SumDB::SumDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port,const std::string &tableName) : PostgresDB(dbname, username, password, host, port)
 {
-    std::string query = "CREATE TABLE IF NOT EXISTS " + dbname + " (id SERIAL PRIMARY KEY, chunkStart INT, chunkEnd INT, topic TEXT, summary TEXT, createdAt TIMESTAMP, updatedAt TIMESTAMP);";
+    std::string query = "CREATE TABLE IF NOT EXISTS " + tableName + " (id SERIAL PRIMARY KEY, chunkStart INT, chunkEnd INT, topic TEXT, summary TEXT, updatedAt TIMESTAMP);";
     executeQuery(query);
 
     std::cout << "SumDB object created" << std::endl;

@@ -57,7 +57,7 @@ private:
 class SumDB : public PostgresDB
 {
 public:
-    SumDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port);
+    SumDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port, const std::string &tableName);
     ~SumDB();
 };
 #endif // DATABASE_H

@@ -6,11 +6,10 @@ user="user"
 pass="password"
 
 interface="logosdb-summary"
-
+volumes="../sumdb"
 # Launch a sumdb postres container
 echo "Launching" $db "..."
-docker rm -f $db
-docker run --name $db -e POSTGRES_USER=$user -e POSTGRES_PASSWORD=$pass -d --network $network postgres:16-alpine3.20
+docker run --name $db -e POSTGRES_USER=$user -e POSTGRES_PASSWORD=$pass -e POSTGRES_DB=db -d --network $network postgres:16-alpine3.20 --volume $volumes:/var/lib/postgresql/data
 
 echo "Create transfer bridge between TopicCluster & SumDB: " $interface "..."
 docker build -t logosdb-summary -f src/summary/Dockerfile .

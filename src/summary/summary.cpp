@@ -9,6 +9,7 @@
 #include <json/json.h>
 #include <thread>
 #include <chrono>
+#include <iomanip>
 #include "database/database.hpp"
 
 /*
@@ -22,19 +23,17 @@ Define a struct to store each row from postgres
 struct TopicNodeRow
 {
     int id;
-    std::string answer;
     std::string question;
+    std::string answer;
     std::vector<std::string> keywords;
-    std::time_t createdAt;
     std::time_t updatedAt;
 
-    TopicNodeRow(int id, std::string answer, std::string question, std::vector<std::string> keywords, std::time_t createdAt, std::time_t updatedAt)
+    TopicNodeRow(int id, std::string answer, std::string question, std::vector<std::string> keywords, std::time_t updatedAt)
     {
         this->id = id;
         this->answer = answer;
         this->question = question;
         this->keywords = keywords;
-        this->createdAt = createdAt;
         this->updatedAt = updatedAt;
     }
 };
@@ -46,17 +45,15 @@ struct SumDBRow
     int chunkEnd;
     std::string topic;
     std::string summary;
-    std::time_t createdAt;
     std::time_t updatedAt;
 
-    SumDBRow(int id, int chunkStart, int chunkEnd, std::string topic, std::string summary, std::time_t createdAt, std::time_t updatedAt)
+    SumDBRow(int id, int chunkStart, int chunkEnd, std::string topic, std::string summary, std::time_t updatedAt)
     {
         this->id = id;
         this->chunkStart = chunkStart;
         this->chunkEnd = chunkEnd;
         this->topic = topic;
         this->summary = summary;
-        this->createdAt = createdAt;
         this->updatedAt = updatedAt;
     }
 };
@@ -88,6 +85,37 @@ std::vector<std::string> split(const std::string &s, char delimiter)
 }
 
 /*
+Helper function to parse datetime
+*/
+
+std::time_t parseTime(const std::string& timeStr) {
+    std::tm tm = {};
+    std::stringstream ss(timeStr);
+    ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+    return std::mktime(&tm);
+}
+
+/*
+Hlper function to escape char
+*/
+//A helper function to escape char before insert to db
+std::string escape(const std::string &s)
+{
+    std::string result;
+    for (char c : s)
+    {
+        switch (c)
+        {
+            case '\'': result += "''"; break; // Escape single quote with another single quote
+            case '\"': result += "\\\""; break; // Escape double quote
+            case '\\': result += "\\\\"; break; // Escape backslash
+            default: result += c;
+        }
+    }
+    return result;
+}
+
+/*
 Reformat all data from 1 database by chunk
 */
 void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data)
@@ -95,15 +123,14 @@ void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data)
     for (const auto &row : result)
     {
         int id = row[0].as<int>();
-        std::string answer = row[1].as<std::string>();
-        std::string question = row[2].as<std::string>();
+        std::string question = row[1].as<std::string>();
+        std::string answer = row[2].as<std::string>();
         std::string keywordsStr = row[3].as<std::string>();
         std::vector<std::string> keywords = split(keywordsStr, ',');
 
-        std::time_t createdAt = row[4].as<std::time_t>();
-        std::time_t updatedAt = row[5].as<std::time_t>();
+        std::time_t updatedAt = parseTime(row[4].as<std::string>());
 
-        TopicNodeRow topicNodeRow(id, answer, question, keywords, createdAt, updatedAt);
+        TopicNodeRow topicNodeRow(id, question, answer, keywords, updatedAt);
         data.push_back(topicNodeRow);
     }
 }
@@ -111,7 +138,7 @@ void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data)
 Fetch data through SumAI to get chunk summary
 */
 
-std::string getChunkSummary(const std::vector<TopicNodeRow> &data, CURL *curl)
+std::string getChunkSummary(const std::vector<TopicNodeRow> &data, CURL *curl, long long CHUNK_SIZE)
 {
     // Convert data to string
     std::string dataStr = "";
@@ -122,15 +149,15 @@ std::string getChunkSummary(const std::vector<TopicNodeRow> &data, CURL *curl)
         {
             keywordsStr += keyword + " ";
         }
-        dataStr += std::to_string(row.id) + " " + row.answer + " " + row.question + " " + keywordsStr + std::to_string(row.createdAt) + " " + std::to_string(row.updatedAt) + "\n";
+        dataStr += std::to_string(row.id) + " " + row.answer + " " + row.question + " " + keywordsStr + " " + std::to_string(row.updatedAt) + "\n";
     }
 
     // Build summary prompt
-    std::string prompt = "Summarize the following data by bullets like this:\n \
-                         - [70 % ] Data 1\n \
-                         - [20 % ] Data 2,\n \
-                            ...\n \
-                        Below are 1000 data needed to summarize :\n " +
+    std::string prompt = std::string("Summarize the following data by bullets like this:\n") +
+                         "- [70 % ] Data 1\n" +
+                         "- [20 % ] Data 2,\n" +
+                         "...\n" +
+                         "Below are " + std::to_string(CHUNK_SIZE) + " data needed to summarize :\n " +
                          dataStr;
 
     // Set up Gemini Service, load api from env
@@ -217,7 +244,7 @@ std::string getChunkSummary(const std::vector<TopicNodeRow> &data, CURL *curl)
 /*
 Store chunk summary to SumDB
 */
-void storeChunkSummary(const std::string &sumdbName, const std::string &summary, const std::string &topic, const std::vector<TopicNodeRow> &data)
+void storeChunkSummary(const std::string &summary, const std::string &topic, const std::vector<TopicNodeRow> &data)
 {
     // Extract necessary information
     int chunkStart = data[0].id;
@@ -226,20 +253,21 @@ void storeChunkSummary(const std::string &sumdbName, const std::string &summary,
     std::time_t now = std::time(0);
 
     // Create SumDBRow
-    SumDBRow sumDBRow(0, chunkStart, chunkEnd, topic, summary, now, now);
+    SumDBRow sumDBRow(0, chunkStart, chunkEnd, topic, summary, now);
 
     // Init a connection to SumDB
-    std::string host = "sumdb";
+    std::string host = "logosdb-sumdb";
     std::string port = "5432";
     std::string username = "user";
     std::string password = "password";
     std::string dbname = "db"; // internal database name
+    std::string sumTable = "test"; // Assume the table name is test for all db in cluster
 
     // Store SumDBRow to SumDB
-    SumDB sumdb(dbname, username, password, host, port);
-    std::string query = "INSERT INTO " + sumdbName + " (chunkStart, chunkEnd, topic, summary, createdAt, updatedAt) \
+    SumDB sumdb(dbname, username, password, host, port, sumTable);
+    std::string query = "INSERT INTO " + sumTable + " (chunkStart, chunkEnd, topic, summary, updatedAt) \
                         VALUES (" +
-                        std::to_string(sumDBRow.chunkStart) + ", " + std::to_string(sumDBRow.chunkEnd) + ", '" + sumDBRow.topic + "', '" + sumDBRow.summary + "', " + std::to_string(sumDBRow.createdAt) + ", " + std::to_string(sumDBRow.updatedAt) + ");";
+                        std::to_string(sumDBRow.chunkStart) + ", " + std::to_string(sumDBRow.chunkEnd) + ", '" + sumDBRow.topic + "', '" + escape(sumDBRow.summary) + "', TO_TIMESTAMP(" + std::to_string(sumDBRow.updatedAt) + "));";
 
     sumdb.executeQuery(query);
 }
@@ -257,7 +285,7 @@ int main()
         std::string port = "5432";
         std::string username = "user";
         std::string password = "password";
-        long long CHUNK_SIZE = 10000;
+        long long CHUNK_SIZE = 10;
         CURL *curl = curl_easy_init();
 
         if (!curl)
@@ -293,9 +321,9 @@ int main()
                 reformatChunk(result, data);
 
                 // Get chunk summary
-                std::string summary = getChunkSummary(data, curl);
+                std::string summary = getChunkSummary(data, curl, CHUNK_SIZE);
                 // Store chunk summary to SumDB
-                storeChunkSummary("sumdb", summary, topic, data);
+                storeChunkSummary(summary, topic, data);
 
                 // Wait for 2 seconds before processing next chunk
                 std::this_thread::sleep_for(std::chrono::seconds(2));
