@@ -6,16 +6,18 @@ This file support interaction with csv file & postgres database
 /*
 Create a csv parser
 */
-CSVParser::CSVParser(std::string filename)
+CSVParser::CSVParser(std::string filename) : file(filename)
 {
-    std::ifstream file(filename);
-
     if (!file.is_open())
     {
         std::cout << "Failed to open file\n";
         return;
     }
+}
 
+// Get data as a whole
+std::vector<std::vector<std::string>> CSVParser::getData()
+{
     std::string line;
     while (std::getline(file, line))
     {
@@ -52,16 +54,63 @@ CSVParser::CSVParser(std::string filename)
         row.push_back(fieldStream.str());
         data.push_back(row);
     }
-}
 
-const std::vector<std::vector<std::string>> &CSVParser::getData() const
-{
     return data;
 }
 
 const bool CSVParser::isEmpty() const
 {
     return data.empty();
+}
+
+// Get data by chunk
+bool CSVParser::readChunk(std::vector<std::vector<std::string>> &chunk, int chunkSize)
+{
+    chunk.clear();
+
+    std::string line;
+    for (int i = 0; i < chunkSize; ++i)
+    {
+        if (!std::getline(file, line))
+        {
+            return false; // No more data to read
+        }
+
+        std::istringstream ss(line);
+        std::string field;
+        std::vector<std::string> row;
+        bool inQuotes = false;
+
+        std::ostringstream fieldStream;
+        for (char ch : line)
+        {
+            switch (ch)
+            {
+                case ',':
+                    if (inQuotes)
+                    {
+                        fieldStream << ch;
+                    }
+                    else
+                    {
+                        row.push_back(fieldStream.str());
+                        fieldStream.str("");
+                        fieldStream.clear();
+                    }
+                    break;
+                case '\"':
+                    inQuotes = !inQuotes;
+                    break;
+                default:
+                    fieldStream << ch;
+                    break;
+            }
+        }
+        row.push_back(fieldStream.str());
+        chunk.push_back(row);
+    }
+
+    return true; // More data might be available
 }
 
 /*
@@ -176,16 +225,17 @@ PostgresDB::~PostgresDB()
 
 TopicCluster::TopicCluster(const std::string &topicFileName)
 {
-    // Read topics from file
-    CSVParser parser(topicFileName);
+    std::ifstream file(topicFileName);
 
-    if (parser.isEmpty())
+    if (!file)
     {
         std::cerr << "Error: " << topicFileName << " could not be opened" << std::endl;
         exit(1);
     }
 
-    topics = parser.getData()[0];
+    std::string line;
+    while (std::getline(file, line))
+        topics.push_back(line);
 }
 
 TopicCluster::~TopicCluster()

@@ -2,12 +2,30 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <chrono>
+#include <ctime>
 #include "database/database.hpp"
 
 /*
 This file accept data from csv and insert it to db cluster
 The data will be routed to the corresponding topic node
 */
+// A helper function to convert a keywords string into postgres array of text
+std::string toPostgresArray(const std::string& s)
+{
+    std::string result = "{";
+    size_t start = 0;
+    size_t end = s.find(",");
+    while (end != std::string::npos)
+    {
+        result += s.substr(start, end - start) + ", ";
+        start = end + 1;
+        end = s.find(",", start);
+    }
+    result += s.substr(start, end);
+    result += "}";
+    return result;
+}
 
 //A helper function to escape char before insert to db
 std::string escape(const std::string &s)
@@ -27,7 +45,8 @@ std::string escape(const std::string &s)
 }
 
 // A helper function to insert data in batch
-void insertBatchData(std::string table, std::vector<std::string> columns, std::vector<std::vector<std::string>> data, TopicCluster &cluster)
+template <typename T>
+void insertBatchData(std::string table, std::vector<std::string> columns, std::vector<std::vector<T>> data, TopicCluster &cluster)
 {
     // Reformat the data to be inserted
     std::string query = "INSERT INTO " + table + " ("; // Create the query
@@ -43,9 +62,7 @@ void insertBatchData(std::string table, std::vector<std::string> columns, std::v
         query += "(";
 
         for (const auto &field : row)
-        {
             query += "'" + escape(field) + "', ";
-        }
 
         // Remove the last comma and space
         query = query.substr(0, query.size() - 2);
@@ -61,9 +78,10 @@ void insertBatchData(std::string table, std::vector<std::string> columns, std::v
 }
 
 // A helper function to insert data to 1 specific topic node
-void insertData(std::string topic, std::string port, std::string username, std::string password, std::string table, std::vector<std::vector<std::string>> data, TopicCluster &cluster, std::vector<std::string> columns)
-{
-    int BATCH_SIZE = 10000;
+void insertData(std::string topic, std::string port, std::string username, std::string password, std::string table, std::vector<std::vector<std::string>> data, TopicCluster &cluster) {
+    // Fixed schema for Topic Node
+    std::vector<std::string> columns = {"question", "answer", "keywords", "updatedAt"}; // Id is auto generated
+    int BATCH_SIZE = 1000;
     std::cout << "Inserting data to topic node: " << topic << std::endl;
     cluster.setTopicNode(topic, port, username, password);
 
@@ -77,7 +95,13 @@ void insertData(std::string topic, std::string port, std::string username, std::
     std::string query = "CREATE TABLE IF NOT EXISTS " + table + " (id SERIAL PRIMARY KEY, ";
     for (const auto &column : columns)
     {
-        query += column + " TEXT, "; // Assume all columns are of type TEXT
+        if (column == "updatedAt") {
+            query += column + " TIMESTAMP, "; // Assume updatedAt is of type TIMESTAMP
+        } else if (column == "keywords") {
+            query += column + " TEXT[], "; // Assume keywords is an array of TEXT
+        } else {
+            query += column + " TEXT, "; // Assume all other columns are of type TEXT
+        }
     }
     query = query.substr(0, query.size() - 2) + ");";
 
@@ -92,20 +116,18 @@ void insertData(std::string topic, std::string port, std::string username, std::
 
         std::vector<std::vector<std::string>> batch;
         for (int j = i; j < endIdx; j++)
+        {
+            // Convert keywords string to PostgreSQL array
+            data[j][2] = toPostgresArray(data[j][2]);
             batch.push_back(data[j]);
+        }
 
-        insertBatchData(table, columns, batch, cluster);
-
-        // Clear the batch
-        std::vector<std::vector<std::string>>().swap(batch);
+        insertBatchData<std::string>(table, columns, batch, cluster);
 
         std::cout << "Batch " << i / BATCH_SIZE + 1 << " inserted successfully" << std::endl;
     }
     cluster.resetTopicNode();
-
-    
 }
-
 // TODO: Replace this function with the actual classification model
 //  For now, we use the column "topic" as the classification result
 //* TopicIdx will be unessecary in the future
@@ -126,14 +148,14 @@ std::string classifyInput(std::vector<std::string> datum, int topicIdx)
 
 // TODO: Replace this with the actual keyword extraction model
 // For now, return a list of 5 keywords [kw1, kw2, kw3, kw4, kw5]
-std::vector<std::string> getKeywords(std::vector<std::string> data)
+std::string getKeywords(std::vector<std::string> data)
 {
     if (data.empty())
     {
         throw std::invalid_argument("No data to extract keywords");
     }
 
-    return {"kw1", "kw2", "kw3", "kw4", "kw5"};
+    return "kw1, kw2, kw3, kw4, kw5";
 }
 
 // After classification, we need to reformat the data
@@ -146,41 +168,34 @@ std::map<std::string, std::vector<std::vector<std::string>>> reformatData(std::v
         throw std::invalid_argument("No data to reformat");
     }
 
-    // Find the topic col idx by extract header row
-    std::vector<std::string> header = data[0];
-    int topicIdx = -1;
-
-    for (int i = 0; i < header.size(); i++)
-    {
-        if (header[i] != "topic")
-            continue;
-
-        topicIdx = i;
-        break;
-    }
-
-    if (topicIdx == -1)
-    {
-        throw std::invalid_argument("Topic column not found");
-    }
-
-    // After that, delete the topic column
-    data.erase(data.begin());
-
     // Create a map to store the data by topic
     std::map<std::string, std::vector<std::vector<std::string>>> dataByTopic;
 
     // Populate the map
     for (const auto &row : data)
     {
-        std::string topic = classifyInput(row, topicIdx);
-
+        std::string topic = classifyInput(row, 2); // Assume the topic is in the 3rd column
         if (topic.empty())
             throw std::invalid_argument("Empty topic from classification");
 
         if (dataByTopic.find(topic) == dataByTopic.end())
             dataByTopic[topic] = std::vector<std::vector<std::string>>();
-        dataByTopic[topic].push_back(row);
+
+        // For each row, also extract keywords and current time by push at the end of the row
+        std::string keywords = getKeywords(row);
+        std::vector<std::string> modifiedRow = row;
+
+        // Get current time
+        std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::string currentTime = std::ctime(&now);
+        currentTime.pop_back(); // Remove the newline character
+
+        // Add keywords and current time to the row
+        modifiedRow.insert(modifiedRow.end(), {keywords, currentTime});
+        dataByTopic[topic].push_back(modifiedRow);
+
+        // Clean up memory
+        std::vector<std::string>().swap(modifiedRow);
     }
 
     // Now the data is sorted based on the topic
@@ -189,47 +204,37 @@ std::map<std::string, std::vector<std::vector<std::string>>> reformatData(std::v
 }
 
 
-//! This function is not working properly
+// TODO: Fix the current bug, failed to insert data to the database, maybe from SQL exec part
 int main()
 {
     try
     {
         std::cout << "Starting auto insert interface" << std::endl;
-        // First we need to get the data from the csv file
         std::string filename = "inputs/input.csv";
         std::string topicFileName = "inputs/topics.txt";
         CSVParser parser(filename);
-        std::vector<std::vector<std::string>> data = parser.getData();
-        std::vector<std::string> columns = data[0]; // This is the mock header
-        // TODO: Replace this with the actual header, which is the defined schema of Postgres
-        // Real schema include: ID, Answer, Question, Keywords, UpdatedTime
-        // std::vector<std::string> columns = {"Answer", "Question", "Keywords", "UpdatedTime"};
-
-        // Then we need to classify the data
-        // ! This function cannot handle Big Data
-        // TODO: Replace this with new method to only return the topic instead of the whole data
-        // This should be call within the insert loop too
-        std::cout << "Classifying data" << std::endl;
-        std::map<std::string, std::vector<std::vector<std::string>>> dataByTopic = reformatData(data);
-
-        // TODO: Implement a keyword extraction model to extract keywords from the data
-        // This function also called within the insert loop
-
-        // Data reclaim is redundant here because reformatData is removed
-        // Reclaim mem for data
-        std::cout << "Reclaiming memory after reformatting" << std::endl;
-        std::vector<std::vector<std::string>>().swap(data);
-
         std::string port = "5432";
         std::string username = "user";
         std::string password = "password";
         std::string table = "test"; // Assume the table name is test
         TopicCluster cluster(topicFileName);
-        
-        // Now loop through the data and insert it to the database by topic
-        std::cout << "Start Inserting data to cluster" << std::endl;
-        for (const auto &[topic, data] : dataByTopic)
-            insertData(topic, port, username, password, table, data, cluster, columns);
+
+        // Read and process the data in chunks
+        std::vector<std::vector<std::string>> chunk;
+        int CHUNK_SIZE = 10000; // Adjust this value based on your system's memory capacity
+        while (parser.readChunk(chunk, CHUNK_SIZE))
+        {
+            // Reformat the data
+            std::map<std::string, std::vector<std::vector<std::string>>> reformattedData = reformatData(chunk);
+
+            // This will loop through all the topics and insert the data to the corresponding topic node
+            for (const auto &[topic, data] : reformattedData) {
+                // Insert the data into the database
+                insertData(topic, port, username, password, table, data, cluster);
+            }
+            chunk.clear(); // Clear the chunk to free up memory
+        }
+
         return 0;
     }
     catch (const std::exception &e)

@@ -12,14 +12,15 @@
 
 class CSVParser
 {
-// TODO: Implement getDataByChunk to handle large data
 public:
     CSVParser(std::string filename);
-    const std::vector<std::vector<std::string>> &getData() const;
     const bool isEmpty() const;
+    std::vector<std::vector<std::string>> getData();
+    bool readChunk(std::vector<std::vector<std::string>> &chunk, int chunkSize);
 
 private:
     std::vector<std::vector<std::string>> data;
+    std::ifstream file;
 };
 
 class PostgresDB
