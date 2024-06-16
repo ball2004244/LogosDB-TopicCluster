@@ -8,7 +8,7 @@ RUN ln -s /usr/include/jsoncpp/json/ /usr/include/json
 
 COPY src/summary/summary.cpp summary.cpp
 COPY src/database/ database/
-COPY inputs/ inputs/
+COPY inputs/topics.txt inputs/topics.txt
 
 RUN g++ -I/usr/include/pqxx -I/usr/include/curl -ljsoncpp -lpqxx -lpq -lcurl -o summary summary.cpp database/database.cpp
 
