@@ -124,6 +124,18 @@ std::string classifyInput(std::vector<std::string> datum, int topicIdx)
     return datum[topicIdx];
 }
 
+// TODO: Replace this with the actual keyword extraction model
+// For now, return a list of 5 keywords [kw1, kw2, kw3, kw4, kw5]
+std::vector<std::string> getKeywords(std::vector<std::string> data)
+{
+    if (data.empty())
+    {
+        throw std::invalid_argument("No data to extract keywords");
+    }
+
+    return {"kw1", "kw2", "kw3", "kw4", "kw5"};
+}
+
 // After classification, we need to reformat the data
 // The data will be sorted based on the topic
 std::map<std::string, std::vector<std::vector<std::string>>> reformatData(std::vector<std::vector<std::string>> data)
@@ -188,12 +200,22 @@ int main()
         std::string topicFileName = "inputs/topics.txt";
         CSVParser parser(filename);
         std::vector<std::vector<std::string>> data = parser.getData();
-        std::vector<std::string> columns = data[0];
+        std::vector<std::string> columns = data[0]; // This is the mock header
+        // TODO: Replace this with the actual header, which is the defined schema of Postgres
+        // Real schema include: ID, Answer, Question, Keywords, UpdatedTime
+        // std::vector<std::string> columns = {"Answer", "Question", "Keywords", "UpdatedTime"};
 
         // Then we need to classify the data
+        // ! This function cannot handle Big Data
+        // TODO: Replace this with new method to only return the topic instead of the whole data
+        // This should be call within the insert loop too
         std::cout << "Classifying data" << std::endl;
         std::map<std::string, std::vector<std::vector<std::string>>> dataByTopic = reformatData(data);
 
+        // TODO: Implement a keyword extraction model to extract keywords from the data
+        // This function also called within the insert loop
+
+        // Data reclaim is redundant here because reformatData is removed
         // Reclaim mem for data
         std::cout << "Reclaiming memory after reformatting" << std::endl;
         std::vector<std::vector<std::string>>().swap(data);

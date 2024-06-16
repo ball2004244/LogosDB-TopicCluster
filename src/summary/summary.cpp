@@ -258,6 +258,10 @@ int main()
         std::string username = "user";
         std::string password = "password";
         long long CHUNK_SIZE = 10000;
+        CURL *curl = curl_easy_init();
+
+        if (!curl)
+            throw std::runtime_error("Failed to initialize curl");
 
         std::string query = "";
         std::string table = "test"; // Assume the table name is test for all db in cluster
