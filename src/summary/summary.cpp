@@ -111,7 +111,7 @@ void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data)
 Fetch data through SumAI to get chunk summary
 */
 
-std::string getChunkSummary(const std::vector<TopicNodeRow> &data)
+std::string getChunkSummary(const std::vector<TopicNodeRow> &data, CURL *curl)
 {
     // Convert data to string
     std::string dataStr = "";
@@ -143,14 +143,6 @@ std::string getChunkSummary(const std::vector<TopicNodeRow> &data)
         return "";
     }
 
-    // Initialize curl
-    CURL *curl = curl_easy_init();
-    if (!curl)
-    {
-        std::cerr << "Curl initialization failed" << std::endl;
-        return "";
-    }
-
     std::string url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + std::string(api);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
@@ -179,7 +171,7 @@ std::string getChunkSummary(const std::vector<TopicNodeRow> &data)
     CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK)
     {
-        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers); // Free the list of headers
         throw std::runtime_error("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)));
     }
 
@@ -189,23 +181,35 @@ std::string getChunkSummary(const std::vector<TopicNodeRow> &data)
     std::string errors;
     std::istringstream iss(response);
     if (!Json::parseFromStream(reader, iss, &jsonResponse, &errors))
+    {
+        curl_slist_free_all(headers); // Free the list of headers
         throw std::runtime_error("Failed to parse JSON response: " + errors);
+    }
 
     if (!jsonResponse.isMember("candidates"))
+    {
+        curl_slist_free_all(headers); // Free the list of headers
         throw std::runtime_error("JSON response does not contain 'candidates' field");
+    }
 
     const Json::Value &candidates = jsonResponse["candidates"];
     if (candidates.empty() || !candidates[0].isMember("content") || !candidates[0]["content"].isMember("parts"))
+    {
+        curl_slist_free_all(headers); // Free the list of headers
         throw std::runtime_error("JSON response does not contain 'content' or 'parts' field");
+    }
 
     const Json::Value &partsResponse = candidates[0]["content"]["parts"];
     if (partsResponse.empty() || !partsResponse[0].isMember("text"))
+    {
+        curl_slist_free_all(headers); // Free the list of headers
         throw std::runtime_error("JSON response does not contain 'text' field");
+    }
 
     std::string text = partsResponse[0]["text"].asString();
 
     // Cleanup
-    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers); // Free the list of headers
 
     return text;
 }
@@ -264,10 +268,10 @@ int main()
         {
             // Init a connection
             cluster.setTopicNode(topic, port, username, password);
-
+            
             query = "SELECT n_live_tup \
                     FROM pg_stat_user_tables \
-                    WHERE relname = 'test' AND schemaname = 'public';";
+                    WHERE relname = '" + table + "' AND schemaname = 'public';";
 
             // Get estimate table size
             table_size = cluster.executeQueryWithResult(query)[0][0].as<long long>();
@@ -285,12 +289,11 @@ int main()
                 reformatChunk(result, data);
 
                 // Get chunk summary
-                std::string summary = getChunkSummary(data);
-
+                std::string summary = getChunkSummary(data, curl);
                 // Store chunk summary to SumDB
                 storeChunkSummary("sumdb", summary, topic, data);
 
-                // Wait for 2 seconds
+                // Wait for 2 seconds before processing next chunk
                 std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         }

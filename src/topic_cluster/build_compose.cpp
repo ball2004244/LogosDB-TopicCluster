@@ -77,11 +77,18 @@ std::string generateConfig(const std::vector<std::string> &containers,
     {
         std::string serviceBodyTemp = serviceTemplate;
         std::string volumeBodyTemp = volumeTemplate;
-        size_t pos;
-        while ((pos = serviceBodyTemp.find(jinja2Variable)) != std::string::npos)
+        size_t pos = 0;
+        while ((pos = serviceBodyTemp.find(jinja2Variable, pos)) != std::string::npos)
+        {
             serviceBodyTemp.replace(pos, jinja2Variable.length(), container);
-        while ((pos = volumeBodyTemp.find(jinja2Variable)) != std::string::npos)
+            pos += container.length();
+        }
+        pos = 0;
+        while ((pos = volumeBodyTemp.find(jinja2Variable, pos)) != std::string::npos)
+        {
             volumeBodyTemp.replace(pos, jinja2Variable.length(), container);
+            pos += container.length();
+        }
         serviceBody += serviceBodyTemp;
         volumeBody += volumeBodyTemp;
     }

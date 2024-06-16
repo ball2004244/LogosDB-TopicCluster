@@ -74,7 +74,7 @@ void insertData(std::string topic, std::string port, std::string username, std::
     }
 
     // Create a table
-    std::string query = "CREATE TABLE IF NOT EXISTS " + table + " (";
+    std::string query = "CREATE TABLE IF NOT EXISTS " + table + " (id SERIAL PRIMARY KEY, ";
     for (const auto &column : columns)
     {
         query += column + " TEXT, "; // Assume all columns are of type TEXT

@@ -12,7 +12,7 @@ echo "Launching" $db "..."
 docker rm -f $db
 docker run --name $db -e POSTGRES_USER=$user -e POSTGRES_PASSWORD=$pass -d --network $network postgres:16-alpine3.20
 
-echo "Add transfer medium between topic cluster and sumdb: " $interface "..."
+echo "Create transfer bridge between TopicCluster & SumDB: " $interface "..."
 docker build -t logosdb-summary -f src/summary/Dockerfile .
 
 docker rm -f $interface
