@@ -115,7 +115,7 @@ int main()
         std::string port = "5432";
         std::string username = "user";
         std::string password = "password";
-        long long CHUNK_SIZE = 10;
+        long long CHUNK_SIZE = 10000;
 
         //! This method is deprecated, use keywordCounter instead
         // CURL *curl = curl_easy_init();
@@ -127,22 +127,35 @@ int main()
         std::string table = "test"; // Assume the table name is test for all db in cluster
         long long table_size = 0;
         long long margin = 3 * CHUNK_SIZE; // Set margin error to 3 chunks, prevent from missing data
+        long long chunk_count = 0;
+        long long order = 0;
         // Loop through all topics
         for (auto &topic : topics)
         {
             // Init a connection
             cluster.setTopicNode(topic, port, username, password);
             
-            query = "SELECT n_live_tup \
-                    FROM pg_stat_user_tables \
-                    WHERE relname = '" + table + "' AND schemaname = 'public';";
+            // Check if a table exists
+            query = "SELECT to_regclass('" + table + "');";
+            if (cluster.executeQueryWithResult(query)[0][0].as<std::string>().empty())
+            {
+                std::cerr << "Table " << table << " does not exist in db: " << topic << std::endl;
+                continue;
+            }
+
+            //! MUST replace this with a more efficient way to get table size for big data
+            query = "SELECT COUNT(*) FROM " + table + ";";
 
             // Get estimate table size
             table_size = cluster.executeQueryWithResult(query)[0][0].as<long long>();
-
+            chunk_count = table_size / CHUNK_SIZE + 1;
+            order = 0;
+            std::cout << "Table size: " << table_size << std::endl;
+            std::cout << "Chunk count: " << chunk_count << std::endl;
             // Now query by chunk in each topic node, deallocate memory after each chunk
             for (long long i = 0; i < table_size; i += CHUNK_SIZE)
             {
+                std::cout << "Start chunk " << ++order << "/" << chunk_count << std::endl;
                 std::vector<TopicNodeRow> data;
                 // Get data by chunk
                 query = "SELECT * FROM " + table + " LIMIT " + std::to_string(CHUNK_SIZE) + " OFFSET " + std::to_string(i) + ";";
@@ -164,7 +177,9 @@ int main()
                 storeChunkSummary(summary, topic, data);
 
                 // Wait for 2 seconds before processing next chunk
-                std::this_thread::sleep_for(std::chrono::seconds(2));
+                // Only necessary for AI summary method
+                // std::cout << "Sleep for 2 seconds" << std::endl;
+                // std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         }
     }

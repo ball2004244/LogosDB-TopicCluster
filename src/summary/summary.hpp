@@ -1,11 +1,14 @@
 #ifndef SUMMARY_H
 #define SUMMARY_H
 
-#include <iostream>
-#include <string>
 #include <vector>
-#include <ctime>
+#include <string>
 #include <sstream>
+#include <ctime>
+#include <iostream>
+#include <iomanip>
+#include <thread>
+#include <chrono>
 #include "schema.hpp"
 #include "database/database.hpp"
 

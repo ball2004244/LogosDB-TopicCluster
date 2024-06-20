@@ -6,10 +6,21 @@ user="user"
 pass="password"
 
 interface="logosdb-summary"
-volumes="../sumdb"
+volumes="$(pwd)/sumdb"
 # Launch a sumdb postres container
 echo "Launching" $db "..."
-docker run --name $db -e POSTGRES_USER=$user -e POSTGRES_PASSWORD=$pass -e POSTGRES_DB=db -d --network $network postgres:16-alpine3.20 --volume $volumes:/var/lib/postgresql/data
+docker run --name $db -e POSTGRES_USER=$user -e POSTGRES_PASSWORD=$pass -e POSTGRES_DB=db -d --network $network --volume $volumes:/var/lib/postgresql/data postgres:16-alpine3.20
+
+# Wait for the PostgreSQL server to be ready
+echo "Waiting for PostgreSQL server to be ready..."
+for i in {1..10}; do
+    if docker exec $db pg_isready; then
+        break
+    else
+        echo "PostgreSQL server not ready, retrying in 5 seconds..."
+        sleep 5
+    fi
+done
 
 echo "Create transfer bridge between TopicCluster & SumDB: " $interface "..."
 docker build -t logosdb-summary -f src/summary/Dockerfile .

@@ -13,7 +13,7 @@ int main()
         std::string filename = "inputs/input.csv";
         std::string topicFileName = "inputs/topics.txt";
 
-        std::string topic = "db1"; // the topic of the node, use as hostname when calling within docker network
+        std::string topic = "Automotive"; // the topic of the node, use as hostname when calling within docker network
         std::string port = "5432";
         std::string dbname = "db"; // internal database name
         std::string username = "user";

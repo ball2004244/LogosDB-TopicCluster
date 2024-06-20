@@ -30,6 +30,9 @@ This function converts the summary to a string to store in SumDB
 */
 std::string convertSummaryToString(const std::unordered_map<std::string, std::vector<int>> &summary)
 {
+    if (summary.empty())
+        return "{}";
+
     std::string result = "{";
     for (const auto &pair : summary)
     {
