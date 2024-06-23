@@ -9,7 +9,7 @@ interface="logosdb-summary"
 volumes="$(pwd)/sumdb"
 # Launch a sumdb postres container
 echo "Launching" $db "..."
-docker run --name $db -e POSTGRES_USER=$user -e POSTGRES_PASSWORD=$pass -e POSTGRES_DB=db -d --network $network --volume $volumes:/var/lib/postgresql/data postgres:16-alpine3.20
+docker run --name $db -e POSTGRES_USER=$user -e POSTGRES_PASSWORD=$pass -e POSTGRES_DB=db -d --network $network --volume $volumes:/var/lib/postgresql/data -p 5432:5432 postgres:16-alpine3.20
 
 # Wait for the PostgreSQL server to be ready
 echo "Waiting for PostgreSQL server to be ready..."
