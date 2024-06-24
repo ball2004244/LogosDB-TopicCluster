@@ -23,6 +23,11 @@ def main():
         filename = "inputs/input.csv"
         topicFileName = "inputs/topics.txt"
 
+        # find len
+        with open(topicFileName, 'r') as file:
+            true_topics = file.readlines()
+            true_topics = [topic.strip() for topic in true_topics]
+
         topic = "localhost"  # using localhost for now
         port = "5432"
         dbname = "db"  # internal database name
@@ -46,11 +51,12 @@ def main():
 
         # Prepare and execute the query
         query = sql.SQL("SELECT chunkstart, chunkend, topic FROM {}").format(sql.Identifier(table))
-        cur = conn.cursor()
-        cur.execute(query)
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
 
-        # Fetch and print all rows
-        rows = cur.fetchall()
+        conn.close()
+
         # Initialize a dictionary to count chunks per topic
         topic_chunk_count = {}
 
@@ -67,12 +73,11 @@ def main():
             print(f"{topic}: {count} chunks")
 
         print('Chunk Count: ' + str(len(rows)) + ' saved chunks')
-        print('Num topic node:', len(topic_chunk_count), 'nodes')
-        # Close the cursor and connection
-        cur.close()
-        conn.close()
-
+        print(f'Actual topic node: {len(topic_chunk_count)} nodes')
+        print(f'Expected topic node: {len(true_topics)} nodes')
+        print(f'Missing {len(true_topics) - len(topic_chunk_count)} nodes: {set(true_topics) - set(topic_chunk_count.keys())}')
         return 0
+
     except Exception as e:
         print(e, file=sys.stderr)
         return 1
