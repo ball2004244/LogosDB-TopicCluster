@@ -9,7 +9,7 @@ input_file = "input.csv"
 input_path = os.path.join(input_dir, input_file)
 
 query = (
-    pl.scan_csv(input_path)
+    pl.scan_csv(input_path, has_header=False, with_column_names=lambda cols: ['question', 'answer', 'topic'])
     .select([
         'question',
         'answer',
@@ -21,6 +21,15 @@ query = (
 print('Processing data...')
 print('Total number of data:', f'{len(query):,}')
 
+# Find rows with any null values
+null_rows_mask = query.with_columns([pl.col(column).is_null() for column in query.columns]).sum_horizontal() > 0
+null_rows = query.filter(null_rows_mask)
+query = query.with_columns(pl.arange(0, query.height).alias("index"))
+null_rows_with_index = query.filter(null_rows_mask)
+null_indices_arr = null_rows_with_index.select("index").to_numpy().flatten().tolist()
+
+print(f'There are {len(null_indices_arr)} rows with null values.')
+# print('Rows with null values:', null_indices_arr)
 topics = query['topic'].to_list()
 del query
 topics = Counter(topics)
@@ -30,7 +39,7 @@ print('Number of unique topics:', len(topics))
 # sort the topics by frequency
 topics = dict(sorted(topics.items(), key=lambda x: x[1], reverse=True))
 
-print('Topic frequency:')
+print('\nTopic frequency:')
 for topic, freq in topics.items():
     print(f'{topic}: {freq:,}')
 

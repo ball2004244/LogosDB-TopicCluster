@@ -10,6 +10,11 @@ Helper function to split string by delimiter
 */
 std::vector<std::string> split(const std::string &s, char delimiter)
 {
+    if (s.empty())
+    {
+        return std::vector<std::string>();
+    }
+
     std::vector<std::string> tokens;
     std::string token;
     std::istringstream tokenStream(s);
@@ -52,19 +57,34 @@ std::string escape(const std::string &s)
 }
 
 /*
+A helper function to safely cast field to type T
+
+*/
+
+template<typename T>
+T safe_as(const pqxx::field& field, T default_value) {
+    if (field.is_null()) {
+        return default_value;
+    }
+    try {
+        return field.as<T>();
+    } catch (const std::exception&) {
+        return default_value;
+    }
+}
+
+/*
 Reformat all data from 1 database by chunk
 */
-void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data)
-{
-    for (const auto &row : result)
-    {
-        int id = row[0].as<int>();
-        std::string question = row[1].as<std::string>();
-        std::string answer = row[2].as<std::string>();
-        std::string keywordsStr = row[3].as<std::string>();
-        std::vector<std::string> keywords = split(keywordsStr, ',');
-
-        std::time_t updatedAt = parseTime(row[4].as<std::string>());
+void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data) {
+    for (const auto &row : result) {
+        int id = safe_as<int>(row[0], 0);
+        std::string question = safe_as<std::string>(row[1], "");
+        std::string answer = safe_as<std::string>(row[2], "");
+        std::string keywordsStr = safe_as<std::string>(row[3], "");
+        std::vector<std::string> keywords = {};
+        if (!keywordsStr.empty()) keywords = split(keywordsStr, ',');
+        std::time_t updatedAt = safe_as<std::time_t>(row[4], 0); // Assuming parseTime can handle the default value appropriately
 
         TopicNodeRow topicNodeRow(id, question, answer, keywords, updatedAt);
         data.push_back(topicNodeRow);
@@ -129,14 +149,22 @@ int main()
         long long margin = 3 * CHUNK_SIZE; // Set margin error to 3 chunks, prevent from missing data
         long long chunk_count = 0;
         long long order = 0;
+        int count = 0;
         // Loop through all topics
         for (auto &topic : topics)
         {
             // Init a connection
+            std::cout << "Current topic order: " << ++count << "/" << topics.size() << std::endl;
             cluster.setTopicNode(topic, port, username, password);
             
             // Check if a table exists
             query = "SELECT to_regclass('" + table + "');";
+            if (cluster.executeQueryWithResult(query)[0][0].is_null())
+            {
+                std::cerr << "Table " << table << " does not exist in db: " << topic << std::endl;
+                continue;
+            }
+
             if (cluster.executeQueryWithResult(query)[0][0].as<std::string>().empty())
             {
                 std::cerr << "Table " << table << " does not exist in db: " << topic << std::endl;
@@ -175,7 +203,6 @@ int main()
 
                 // Store chunk summary to SumDB
                 storeChunkSummary(summary, topic, data);
-
                 // Wait for 2 seconds before processing next chunk
                 // Only necessary for AI summary method
                 // std::cout << "Sleep for 2 seconds" << std::endl;
