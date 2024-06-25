@@ -160,6 +160,8 @@ cython_debug/
 #.idea/
 
 *.out
+src/topic_cluster/*/
+sumdb/
 build_compose
 compose.yml
 interface
