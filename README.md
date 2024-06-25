@@ -18,16 +18,17 @@ This repo support creating dynamic docker compose, allow users to manage multipl
 2. Then create the dynamic `compose.yml` file and launch the cluster with
 
 ```bash
-./script/build.sh
+bash ./scripts/build.sh
 ```
 
-3. Delete the cluster
+### Cluster cleaning
+- Delete the cluster
 
 ```bash
-./script/clean.sh
+bash ./scripts/clean.sh
 ```
 
-4. Full clear Docker with
+- Full clear Docker with
 ```bash
 docker system prune -a --volumes
 ```
@@ -43,7 +44,7 @@ You can either insert or query data with the cluster
 - Then insert with
 
 ```bash
-./script/insert.sh
+bash ./scripts/insert.sh
 ```
 
 **2. Query**
@@ -52,7 +53,7 @@ You can either insert or query data with the cluster
 - Query data from 1 database with
 
 ```bash
-./script/query.sh
+bash ./scripts/query.sh
 ```
 
 **3. Custom**
@@ -61,34 +62,42 @@ You can also write your own SQL at `custom/query.sql`
 Then run custom query with
 
 ```bash
-./script/custom.sh
+bash ./scripts/custom.sh
 ```
 
 ### Dynamic Routing
 
-1. Generate SumDB
-   SumDB acts as a table of content for topic cluster, make querying extremely fast. To create SumDB,
-   first you need to copy `.env.copy` to a new file called `.env` and fill out your Google Gemini API.
-
-Then, run `./scripts/summary.sh`, which will introduce a summary interface into the TopicCluster, then summarize all data by chunk.
-
-_Note: This process will take time_
-
-2. Bring your own data
-   First put your .csv file in `scripts` folder
+1. Bring your own data
+First put your .csv file in `inputs` folder
 
 Second, modify the process_input.py for convert your data into Cluster readable data
 
 You might need some python libraries for that
 
 ```bash
-pip install pandas polars
+pip install -r requirements.txt
 ```
-
-After all, auto insert data with
+Then run process_input script
 
 ```bash
-./scripts/auto_insert.sh
+python3 process_input.py
 ```
+
+After all, auto insert processed data with
+
+```bash
+bash ./scripts/auto_insert.sh
+```
+
+_Note: This process will take time_
+
+2. Generate SumDB
+   SumDB acts as a table of content for topic cluster, make querying extremely fast. 
+   To create SumDB with default config, you don't need to do anything.
+
+   If you want to use SumDB with intergrated AI, you need to copy `.env.copy` to a new file called `.env` and fill out your Google Gemini API.
+
+
+Then, run `bash ./scripts/summary.sh`, which will introduce a summary interface into the TopicCluster, then summarize all data by chunk.
 
 _Note: This process will take time_
