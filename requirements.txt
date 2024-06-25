@@ -16,6 +16,7 @@ packaging==24.1
 pandas==2.2.2
 pillow==10.3.0
 polars==0.20.31
+psycopg2==2.9.9
 Pygments==2.18.0
 pyparsing==3.1.2
 PySocks==1.7.1
