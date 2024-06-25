@@ -27,7 +27,10 @@ docker build -t logosdb-summary -f src/summary/Dockerfile .
 
 docker rm -f $interface
 
-docker run --network=$network --name $interface --env-file .env -d logosdb-summary
+#! Uncomment to run on SumAI mode
+# docker run --network=$network --name $interface --env-file .env -d logosdb-summary
+
+docker run --network=$network --name $interface -d logosdb-summary
 
 # Output the logs
 echo "=============================="
