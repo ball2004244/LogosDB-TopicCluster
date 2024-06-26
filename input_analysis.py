@@ -46,7 +46,6 @@ for topic, freq in topics.items():
 # Visualize the data with horizontal bar plot
 plot_path = 'topics.png'
 
-sns.set_theme(style="darkgrid")
-sns.set(rc={'figure.figsize':(19.2, 10.8)})
+sns.set_theme(style="darkgrid", rc={'figure.figsize':(19.2, 10.8)})
 sns.set_context("paper", font_scale=1.5)
 sns.barplot(x=list(topics.values()), y=list(topics.keys())).get_figure().savefig(plot_path)

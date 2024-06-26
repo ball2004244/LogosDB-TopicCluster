@@ -67,21 +67,16 @@ const bool CSVParser::isEmpty() const
 bool CSVParser::readChunk(std::vector<std::vector<std::string>> &chunk, int chunkSize)
 {
     chunk.clear();
-
     std::string line;
-    for (int i = 0; i < chunkSize; ++i)
-    {
-        if (!std::getline(file, line))
-        {
-            return false; // No more data to read
-        }
+    int linesRead = 0;
 
+    while (linesRead < chunkSize && std::getline(file, line))
+    {
         std::istringstream ss(line);
-        std::string field;
         std::vector<std::string> row;
         bool inQuotes = false;
-
         std::ostringstream fieldStream;
+
         for (char ch : line)
         {
             switch (ch)
@@ -108,9 +103,11 @@ bool CSVParser::readChunk(std::vector<std::vector<std::string>> &chunk, int chun
         }
         row.push_back(fieldStream.str());
         chunk.push_back(row);
+        ++linesRead;
     }
 
-    return true; // More data might be available
+    // Return true if any lines were read, indicating there was data.
+    return linesRead > 0;
 }
 
 /*
