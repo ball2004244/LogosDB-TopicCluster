@@ -44,84 +44,44 @@ std::string escape(const std::string &s)
     return result;
 }
 
-// A helper function to insert data in batch
-template <typename T>
-void insertBatchData(std::string table, std::vector<std::string> columns, std::vector<std::vector<T>> data, TopicCluster &cluster)
-{
-    std::string query = "INSERT INTO " + table + " (";
-    for (const auto &column : columns)
-    {
-        query += column + ", ";
-    }
-    query = query.substr(0, query.size() - 2) + ") VALUES ";
-
-    for (const auto &row : data)
-    {
-        query += "(";
-
-        for (const auto &field : row)
-        {
-            if (field.size() >= 2 && field.front() == '{' && field.back() == '}')
-                query += "'" + field + "', "; // Dont do escape for array
-            else
-                query += "'" + escape(field) + "', ";
-        }
-
-        query = query.substr(0, query.size() - 2) + "), ";
-    }
-
-    query = query.substr(0, query.size() - 2) + ";";
-
-    // Print first 1k characters of the query
-    // std::cout << "Executing query: " << query.substr(0, 1000) << std::endl;
-    cluster.executeQuery(query);
-}
-
 // A helper function to insert data to 1 specific topic node
 void insertData(std::string topic, std::string port, std::string username, std::string password, std::string table, std::vector<std::vector<std::string>> data, TopicCluster &cluster) {
-    int BATCH_SIZE = 10000;
     std::cout << "Inserting data to topic node: " << topic << std::endl;
     cluster.setTopicNode(topic, port, username, password);
 
-    if (data.empty())
-    {
+    if (data.empty()) {
         throw std::invalid_argument("No data to insert");
-        return;
     }
 
     // Create a table
-    // Hardcoded columns for now
     std::vector<std::string> columns = {"question", "answer", "keywords", "updatedAt"};
-    std::string query = "CREATE TABLE IF NOT EXISTS " 
-                        + table
-                        + " (id SERIAL PRIMARY KEY, "
-                        + columns[0] + " TEXT, "
-                        + columns[1] + " TEXT, "
-                        + columns[2] + " TEXT[], "
-                        + columns[3] + " TIMESTAMP);";
-
+    std::string query = "CREATE TABLE IF NOT EXISTS " + table + " (id SERIAL PRIMARY KEY, " + columns[0] + " TEXT, " + columns[1] + " TEXT, " + columns[2] + " TEXT[], " + columns[3] + " TIMESTAMP);";
     cluster.executeQuery(query);
 
-    // Insert data in batches
-    for (int i = 0; i < data.size(); i += BATCH_SIZE)
-    {
-        std::cout << "Inserting batch " << i / BATCH_SIZE + 1 << " of " << (data.size() + BATCH_SIZE - 1) / BATCH_SIZE << "(Batch size: " << BATCH_SIZE << ")" << std::endl;
-        int endIdx = std::min(i + BATCH_SIZE, (int)data.size());
+    // Insert data row by row
+    for (const auto &row : data) {
+        std::string insertQuery = "INSERT INTO " + table + " (";
+        for (const auto &column : columns) {
+            insertQuery += column + ", ";
+        }
+        insertQuery = insertQuery.substr(0, insertQuery.size() - 2) + ") VALUES (";
 
-        std::vector<std::vector<std::string>> batch;
-        for (int j = i; j < endIdx; j++)
-        {
-            // Convert keywords string to PostgreSQL array
-            data[j][2] = toPostgresArray(data[j][2]);
-            batch.push_back(data[j]);
+        for (const auto &field : row) {
+            if (field.size() >= 2 && field.front() == '{' && field.back() == '}') {
+                insertQuery += "'" + field + "', "; // Don't escape for array
+            } else {
+                insertQuery += "'" + escape(field) + "', ";
+            }
         }
 
-        insertBatchData<std::string>(table, columns, batch, cluster);
-
-        std::cout << "Batch " << i / BATCH_SIZE + 1 << " inserted successfully" << std::endl;
+        insertQuery = insertQuery.substr(0, insertQuery.size() - 2) + ");";
+        cluster.executeQuery(insertQuery);
     }
+
+    std::cout << "Data inserted successfully" << std::endl;
     cluster.resetTopicNode();
 }
+
 // TODO: Replace this function with the actual classification model
 //  For now, we use the column "topic" as the classification result
 //* TopicIdx will be unessecary in the future
@@ -200,8 +160,6 @@ std::map<std::string, std::vector<std::vector<std::string>>> reformatData(std::v
     return dataByTopic;
 }
 
-
-// TODO: Fix the current bug, failed to insert data to the database, maybe from SQL exec part
 int main()
 {
     try
