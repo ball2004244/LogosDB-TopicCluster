@@ -140,7 +140,7 @@ PostgresDB::PostgresDB(const std::string &dbname, const std::string &username, c
     }
 }
 
-void PostgresDB::executeQuery(const std::string &sql)
+void PostgresDB::executeQuery(const std::string &sql, bool verbose)
 {
     try
     {
@@ -151,17 +151,19 @@ void PostgresDB::executeQuery(const std::string &sql)
         pqxx::result R = W.exec(sql);
 
         // Print the result
-        std::cout << "Operation done successfully" << std::endl;
-
-        // Print whatever the query returns
-        std::cout << "Query result: " << std::endl;
-        for (auto row : R)
+        if (verbose)
         {
-            for (auto field : row)
+            std::cout << "Operation done successfully" << std::endl;
+            // Print whatever the query returns
+            std::cout << "Query result: " << std::endl;
+            for (auto row : R)
             {
-                std::cout << field.as<std::string>() << ' ';
+                for (auto field : row)
+                {
+                    std::cout << field.as<std::string>() << ' ';
+                }
+                std::cout << std::endl;
             }
-            std::cout << std::endl;
         }
 
         // Commit the transaction

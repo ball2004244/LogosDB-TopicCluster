@@ -28,7 +28,7 @@ class PostgresDB
 public:
     PostgresDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port);
     ~PostgresDB();
-    void executeQuery(const std::string &sql);
+    void executeQuery(const std::string &sql, bool verbose = false);
     pqxx::result executeQueryWithResult(const std::string &sql);
     void disconnect();
 
