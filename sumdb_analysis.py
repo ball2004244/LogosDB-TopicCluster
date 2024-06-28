@@ -1,10 +1,21 @@
-import psycopg2
+from datetime import datetime
+from collections import defaultdict
 from psycopg2 import sql
+from rich import print
+import psycopg2
 import sys
+
+def log(message: str) -> None:
+    """
+    Logs a message to the console.
+    """
+    # print(message)
+    with open("sumdb_log.txt", "a") as log_file:
+        log_file.write(message + "\n")
 
 def get_column_names(conn, table):
     """
-    Fetches and prints the column names of a specified table.
+    Fetches and logs the column names of a specified table.
     """
     query = sql.SQL("""
         SELECT column_name 
@@ -45,9 +56,12 @@ def main():
             port=port
         )
 
-        # Get and print column names
+        # Format datetime for readability
+        formatted_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log(f"[{formatted_datetime}] Connected to database '{dbname}' on {topic}:{port} as '{username}'")
+        # Get and log column names
         column_names = get_column_names(conn, table)
-        print("Column names in '{}' table: {}".format(table, ", ".join(column_names)))
+        log("Column names in '{}' table: {}".format(table, ", ".join(column_names)))
 
         # Prepare and execute the query
         query = sql.SQL("SELECT chunkstart, chunkend, topic FROM {}").format(sql.Identifier(table))
@@ -57,30 +71,46 @@ def main():
 
         conn.close()
 
-        # Initialize a dictionary to count chunks per topic
-        topic_chunk_count = {}
+        topic_chunk_count = defaultdict(int)
+        row_topic_count = defaultdict(list)
 
-        # Iterate over each row and count chunks per topic
         for row in rows:
-            topic = row[2]  # Assuming the topic is in the third column
-            if topic in topic_chunk_count:
-                topic_chunk_count[topic] += 1
-            else:
-                topic_chunk_count[topic] = 1
+            chunk_start, chunk_end, topic = row
 
-        # Print the count of chunks for each topic
+            topic_chunk_count[topic] += 1
+            row_topic_count[topic].append((chunk_start, chunk_end))
+
+
+        # log the count of chunks for each topic
+        log('\nTOPIC NODE ANALYSIS')
         for topic, count in topic_chunk_count.items():
-            print(f"{topic}: {count} chunks")
+            log(f"{topic}: {count} chunks")
 
-        print('Chunk Count: ' + str(len(rows)) + ' saved chunks')
-        print(f'Actual topic node: {len(topic_chunk_count)} nodes')
-        print(f'Expected topic node: {len(true_topics)} nodes')
-        print(f'Missing {len(true_topics) - len(topic_chunk_count)} nodes: {set(true_topics) - set(topic_chunk_count.keys())}')
-        return 0
+        log('Chunk Count: ' + str(len(rows)) + ' saved chunks')
+        log(f'Actual topic node: {len(topic_chunk_count)} nodes')
+        log(f'Expected topic node: {len(true_topics)} nodes')
+        log(f'Missing {len(true_topics) - len(topic_chunk_count)} nodes: {set(true_topics) - set(topic_chunk_count.keys())}')
+        
+        log('\nDATA COUNT ANALYSIS')
+        for topic, rows in row_topic_count.items():
+            log(f"{topic}: {rows}")
+
+        log('\nCONTINUITY CHECK')
+        for topic, chunks in row_topic_count.items():
+            # Sort the chunks by chunkstart to ensure correct order
+            chunks.sort(key=lambda x: x[0])
+            for i in range(len(chunks) - 1):
+                current_chunk_end = chunks[i][1]
+                next_chunk_start = chunks[i + 1][0]
+                # Check if there is a gap
+                if next_chunk_start != current_chunk_end + 1:
+                    log(f"Gap found in topic '{topic}' within chunks [{current_chunk_end}, {next_chunk_start}]")
 
     except Exception as e:
-        print(e, file=sys.stderr)
-        return 1
+        log(str(e), file=sys.stderr)
 
+#! Get wrong chunkstart & chunkend from SumDB
+#! Maybe issues with summary C++ algorithm or with this script
+#TODO: Check if this script is working correctly, otherwise check the summary algorithm
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
