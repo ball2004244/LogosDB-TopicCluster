@@ -30,6 +30,18 @@ null_indices_arr = null_rows_with_index.select("index").to_numpy().flatten().tol
 
 print(f'There are {len(null_indices_arr)} rows with null values.')
 # print('Rows with null values:', null_indices_arr)
+
+
+print(f'Save topic Automotive into a new csv file...')
+# save data of 'Automotive' topic into a new csv called Automotive.csv
+automotive = query.filter(pl.col('topic') == 'Automotive')
+automotive_path = 'Automotive.csv'
+automotive.write_csv(automotive_path)
+# sorted_automotive = automotive.sort('question')
+# sorted_automotive.write_csv(automotive_path)
+print(f'Saved {len(automotive)} rows with topic "Automotive" into {automotive_path}.')
+
+
 topics = query['topic'].to_list()
 del query
 topics = Counter(topics)
