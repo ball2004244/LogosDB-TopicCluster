@@ -196,8 +196,7 @@ int main()
                 // Get chunk summary
                 //! This method is deprecated, use keywordCounter instead
                 // std::string summary = getChunkSummary(data, curl, CHUNK_SIZE);
-                
-                //TODO: Replace this with keywordCounter method from keyword_counter.hpp
+
                 std::string summary = convertSummaryToString(keywordAggregate(data));
 
 

@@ -27,7 +27,8 @@ std::string toPostgresArray(const std::string& s)
     return result;
 }
 
-//A helper function to escape char before insert to db
+// TODO: This functions replace original string with some weird chars, need to fix
+// A helper function to escape char before insert to db
 std::string escape(const std::string &s)
 {
     std::string result;
@@ -42,6 +43,22 @@ std::string escape(const std::string &s)
         }
     }
     return result;
+}
+
+// A helper function to safely insert data to db
+std::string createSafePostgresString(const std::string& field) {
+    // Base delimiter
+    std::string delimiter = "$Q$";
+    std::string modifiedDelimiter = delimiter;
+
+    // Check if the delimiter is in the field and modify it if necessary
+    int counter = 0;
+    while (field.find(modifiedDelimiter) != std::string::npos) {
+        modifiedDelimiter = "$Q" + std::to_string(++counter) + "$";
+    }
+
+    // Return the field enclosed in the safe delimiter
+    return modifiedDelimiter + field + modifiedDelimiter;
 }
 
 // A helper function to insert data in batch
@@ -60,12 +77,7 @@ void insertBatchData(std::string table, std::vector<std::string> columns, std::v
         query += "(";
 
         for (const auto &field : row)
-        {
-            if (field.size() >= 2 && field.front() == '{' && field.back() == '}')
-                query += "'" + field + "', "; // Dont do escape for array
-            else
-                query += "'" + escape(field) + "', ";
-        }
+            query += createSafePostgresString(field) + ", ";
 
         query = query.substr(0, query.size() - 2) + "), ";
     }

@@ -36,7 +36,7 @@ print(f'Save topic Automotive into a new csv file...')
 # save data of 'Automotive' topic into a new csv called Automotive.csv
 automotive = query.filter(pl.col('topic') == 'Automotive')
 automotive_path = 'Automotive.csv'
-automotive.write_csv(automotive_path)
+automotive.write_csv(automotive_path, include_header=True)
 # sorted_automotive = automotive.sort('question')
 # sorted_automotive.write_csv(automotive_path)
 print(f'Saved {len(automotive)} rows with topic "Automotive" into {automotive_path}.')
