@@ -12,3 +12,4 @@ echo "Building the dynamic docker compose"
 echo "Creating the docker compose file based on inputs/topic.txt"
 docker compose up -d
 cd ../..
+echo "Dynamic Docker Compose built and running successfully"

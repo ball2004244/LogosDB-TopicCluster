@@ -200,12 +200,14 @@ int main()
                 std::string summary = convertSummaryToString(keywordAggregate(data));
 
 
+                // TODO: fix bug here, the sumID has gap when doing insert
+                //! Assumtion: Gap arises on concurrent write to the same table, so we need to lock the table
                 // Store chunk summary to SumDB
                 storeChunkSummary(summary, topic, data);
-                // Wait for 2 seconds before processing next chunk
-                // Only necessary for AI summary method
-                // std::cout << "Sleep for 2 seconds" << std::endl;
-                // std::this_thread::sleep_for(std::chrono::seconds(2));
+
+                // Wait for 5 seconds before processing next chunk
+                std::cout << "Sleep for 5 seconds" << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         }
     }

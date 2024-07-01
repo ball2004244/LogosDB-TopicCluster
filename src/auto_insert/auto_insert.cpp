@@ -91,6 +91,7 @@ void insertBatchData(std::string table, std::vector<std::string> columns, std::v
 
 // A helper function to insert data to 1 specific topic node
 void insertData(std::string topic, std::string port, std::string username, std::string password, std::string table, std::vector<std::vector<std::string>> data, TopicCluster &cluster, int CHUNK_SIZE = 10000) {
+    resetTopicNode(); // Prevent concurrent access to the same topic node
     std::cout << "Inserting data to topic node: " << topic << std::endl;
     cluster.setTopicNode(topic, port, username, password);
 

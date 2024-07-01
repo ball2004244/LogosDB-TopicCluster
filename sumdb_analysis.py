@@ -72,14 +72,15 @@ def main():
         conn.close()
 
         topic_chunk_count = defaultdict(int)
-        row_topic_count = defaultdict(list)
+        row_topic_pairs = defaultdict(list)
+        row_topic_count = defaultdict(int)
 
         for row in rows:
             chunk_start, chunk_end, topic = row
 
             topic_chunk_count[topic] += 1
-            row_topic_count[topic].append((chunk_start, chunk_end))
-
+            row_topic_pairs[topic].append((chunk_start, chunk_end))
+            row_topic_count[topic] += abs(chunk_end - chunk_start) + 1
 
         # log the count of chunks for each topic
         log('\nTOPIC NODE ANALYSIS')
@@ -92,11 +93,14 @@ def main():
         log(f'Missing {len(true_topics) - len(topic_chunk_count)} nodes: {set(true_topics) - set(topic_chunk_count.keys())}')
         
         log('\nDATA COUNT ANALYSIS')
-        for topic, rows in row_topic_count.items():
-            log(f"{topic}: {rows}")
+        for topic, rows in row_topic_pairs.items():
+            log(f"{topic}: {rows} (Rows: {row_topic_count[topic]})")
+
+        total_rows = sum(row_topic_count.values())
+        log(f'Total rows: {total_rows}')
 
         log('\nCONTINUITY CHECK')
-        for topic, chunks in row_topic_count.items():
+        for topic, chunks in row_topic_pairs.items():
             # Sort the chunks by chunkstart to ensure correct order
             chunks.sort(key=lambda x: x[0])
             for i in range(len(chunks) - 1):

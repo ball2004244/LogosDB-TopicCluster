@@ -6,9 +6,9 @@
 #include <sstream>
 #include <vector>
 #include <string>
-#include <pqxx/pqxx>
 #include <memory>
 #include <algorithm>
+#include <pqxx/pqxx>
 
 class CSVParser
 {

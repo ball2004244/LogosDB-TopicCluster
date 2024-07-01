@@ -15,4 +15,6 @@ echo "Auto inserting data into cluster"
 docker run --network=$network --name $db -d auto_insert_interface
 
 # Output the logs
+echo "Outputting logs..."
 docker logs -f $db
+echo "Finished Auto Inserting Data"

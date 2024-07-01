@@ -29,3 +29,5 @@ cd ../..
 
 echo "Delete network"
 docker network rm topic_cluster_topicdb-cluster
+
+echo "Successfully cleaned up all interfaces and topic cluster nodes"

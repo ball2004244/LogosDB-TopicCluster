@@ -36,3 +36,4 @@ docker run --network=$network --name $interface -d logosdb-summary
 echo "=============================="
 echo "Outputting logs..."
 docker logs -f $interface
+echo "Finished Creating SumDB"
