@@ -84,11 +84,16 @@ void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data) {
         std::string keywordsStr = safe_as<std::string>(row[3], "");
         std::vector<std::string> keywords = {};
         if (!keywordsStr.empty()) keywords = split(keywordsStr, ',');
-        std::time_t updatedAt = safe_as<std::time_t>(row[4], 0); // Assuming parseTime can handle the default value appropriately
+        std::time_t updatedAt = safe_as<std::time_t>(row[4], 0);
 
         TopicNodeRow topicNodeRow(id, question, answer, keywords, updatedAt);
         data.push_back(topicNodeRow);
     }
+
+    // Sort the data vector by id
+    std::sort(data.begin(), data.end(), [](const TopicNodeRow& a, const TopicNodeRow& b) {
+        return a.id < b.id;
+    });
 }
 
 /*
@@ -114,6 +119,7 @@ void storeChunkSummary(const std::string &summary, const std::string &topic, con
     std::string sumTable = "test"; // Assume the table name is test for all db in cluster
 
     // Store SumDBRow to SumDB
+    //TODO: Implement chunkID for every ChunkSize data, instead of using SERIAL id from postgres
     SumDB sumdb(dbname, username, password, host, port, sumTable);
     std::string query = "INSERT INTO " + sumTable + " (chunkStart, chunkEnd, topic, summary, updatedAt) \
                         VALUES (" +
@@ -206,8 +212,8 @@ int main()
                 storeChunkSummary(summary, topic, data);
 
                 // Wait for 5 seconds before processing next chunk
-                std::cout << "Sleep for 5 seconds" << std::endl;
-                std::this_thread::sleep_for(std::chrono::seconds(2));
+                // std::cout << "Sleep for 5 seconds" << std::endl;
+                // std::this_thread::sleep_for(std::chrono::seconds(5));
             }
         }
     }
