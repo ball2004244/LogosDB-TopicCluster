@@ -268,7 +268,7 @@ void TopicCluster::resetTopicNode()
         connection = nullptr;
     }
 
-    std::cout << "Disconnected from current node" << std::endl;
+    std::cout << "Disconnected any existing connection" << std::endl;
 }
 
 std::vector<std::string> TopicCluster::getTopics()
@@ -300,7 +300,7 @@ pqxx::result TopicCluster::executeQueryWithResult(const std::string &sql)
 
 SumDB::SumDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port,const std::string &tableName) : PostgresDB(dbname, username, password, host, port)
 {
-    std::string query = "CREATE TABLE IF NOT EXISTS " + tableName + " (id SERIAL PRIMARY KEY, chunkStart INT, chunkEnd INT, topic TEXT, summary TEXT, updatedAt TIMESTAMP);";
+    std::string query = "CREATE TABLE IF NOT EXISTS " + tableName + " (id INT PRIMARY KEY, chunkStart INT, chunkEnd INT, topic TEXT, summary TEXT, updatedAt TIMESTAMP);";
     executeQuery(query);
 
     std::cout << "SumDB object created" << std::endl;

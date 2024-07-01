@@ -75,7 +75,6 @@ void insertBatchData(std::string table, std::vector<std::string> columns, std::v
     for (const auto &row : data)
     {
         query += "(";
-
         for (const auto &field : row)
             query += createSafePostgresString(field) + ", ";
 
@@ -91,7 +90,6 @@ void insertBatchData(std::string table, std::vector<std::string> columns, std::v
 
 // A helper function to insert data to 1 specific topic node
 void insertData(std::string topic, std::string port, std::string username, std::string password, std::string table, std::vector<std::vector<std::string>> data, TopicCluster &cluster, int CHUNK_SIZE = 10000) {
-    resetTopicNode(); // Prevent concurrent access to the same topic node
     std::cout << "Inserting data to topic node: " << topic << std::endl;
     cluster.setTopicNode(topic, port, username, password);
 
@@ -103,34 +101,39 @@ void insertData(std::string topic, std::string port, std::string username, std::
 
     // Create a table
     // Hardcoded columns for now
-    std::vector<std::string> columns = {"question", "answer", "keywords", "updatedAt"};
+    std::vector<std::string> columns = {"id", "question", "answer", "keywords", "updatedAt"};
     std::string query = "CREATE TABLE IF NOT EXISTS " 
-                        + table
-                        + " (id SERIAL PRIMARY KEY, "
-                        + columns[0] + " TEXT, "
+                        + table + " ("
+                        + columns[0] + " INTEGER PRIMARY KEY, "
                         + columns[1] + " TEXT, "
-                        + columns[2] + " TEXT[], "
-                        + columns[3] + " TIMESTAMP);";
+                        + columns[2] + " TEXT, "
+                        + columns[3] + " TEXT[], "
+                        + columns[4] + " TIMESTAMP);";
 
     cluster.executeQuery(query);
 
     // Insert data in batches
     for (int i = 0; i < data.size(); i += CHUNK_SIZE)
     {
-        std::cout << "Inserting batch " << i / CHUNK_SIZE + 1 << " of " << (data.size() + CHUNK_SIZE - 1) / CHUNK_SIZE << "(Batch size: " << CHUNK_SIZE << ")" << std::endl;
         int endIdx = std::min(i + CHUNK_SIZE, (int)data.size());
-
         std::vector<std::vector<std::string>> batch;
+        // Get the current max id if exists, if not then set to 1
+        std::string query = "SELECT MAX(id) FROM " + table + ";";
+        pqxx::result result = cluster.executeQueryWithResult(query);
+        int maxId = 1;
+        if (!result[0][0].is_null() && !result[0][0].as<std::string>().empty())
+            maxId = result[0][0].as<int>() + 1;
+
         for (int j = i; j < endIdx; j++)
         {
             // Convert keywords string to PostgreSQL array
             data[j][2] = toPostgresArray(data[j][2]);
+            // Prepend the id to the beginning of each row
+            data[j].insert(data[j].begin(), std::to_string(maxId++));
             batch.push_back(data[j]);
         }
 
         insertBatchData<std::string>(table, columns, batch, cluster);
-
-        std::cout << "Batch " << i / CHUNK_SIZE + 1 << " inserted successfully" << std::endl;
     }
     cluster.resetTopicNode();
 }
@@ -229,8 +232,10 @@ int main()
         // Read and process the data in chunks
         std::vector<std::vector<std::string>> chunk;
         int CHUNK_SIZE = 10000; // Adjust this value based on your system's memory capacity
+        int count = 0;
         while (parser.readChunk(chunk, CHUNK_SIZE))
         {
+            std::cout << "PROCESSING CHUNK " << ++count << "/? (SIZE: " << chunk.size() << ")" << std::endl;
             // Reformat the data
             std::map<std::string, std::vector<std::vector<std::string>>> reformattedData = reformatData(chunk);
 
@@ -240,6 +245,7 @@ int main()
                 insertData(topic, port, username, password, table, data, cluster, CHUNK_SIZE);
             }
             chunk.clear(); // Clear the chunk to free up memory
+            std::cout << "CHUNK " << count << " PROCESSED SUCCESSFULLY" << std::endl;
         }
 
         return 0;

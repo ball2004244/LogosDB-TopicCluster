@@ -121,9 +121,13 @@ void storeChunkSummary(const std::string &summary, const std::string &topic, con
     // Store SumDBRow to SumDB
     //TODO: Implement chunkID for every ChunkSize data, instead of using SERIAL id from postgres
     SumDB sumdb(dbname, username, password, host, port, sumTable);
-    std::string query = "INSERT INTO " + sumTable + " (chunkStart, chunkEnd, topic, summary, updatedAt) \
-                        VALUES (" +
-                        std::to_string(sumDBRow.chunkStart) + ", " + std::to_string(sumDBRow.chunkEnd) + ", '" + sumDBRow.topic + "', '" + escape(sumDBRow.summary) + "', TO_TIMESTAMP(" + std::to_string(sumDBRow.updatedAt) + "));";
+    std::string query = "INSERT INTO " + sumTable + 
+                        " (chunkStart, chunkEnd, topic, summary, updatedAt) VALUES (" +
+                        std::to_string(sumDBRow.chunkStart) + ", " + 
+                        std::to_string(sumDBRow.chunkEnd) + ", '" + 
+                        sumDBRow.topic + "', '" + 
+                        escape(sumDBRow.summary) + "', TO_TIMESTAMP(" + 
+                        std::to_string(sumDBRow.updatedAt) + "));";
 
     sumdb.executeQuery(query);
 }
@@ -162,7 +166,7 @@ int main()
             // Init a connection
             std::cout << "Current topic order: " << ++count << "/" << topics.size() << std::endl;
             cluster.setTopicNode(topic, port, username, password);
-            
+
             // Check if a table exists
             query = "SELECT to_regclass('" + table + "');";
             if (cluster.executeQueryWithResult(query)[0][0].is_null())
@@ -205,11 +209,10 @@ int main()
 
                 std::string summary = convertSummaryToString(keywordAggregate(data));
 
-
                 // TODO: fix bug here, the sumID has gap when doing insert
                 //! Assumtion: Gap arises on concurrent write to the same table, so we need to lock the table
                 // Store chunk summary to SumDB
-                storeChunkSummary(summary, topic, data);
+                // storeChunkSummary(summary, topic, data);
 
                 // Wait for 5 seconds before processing next chunk
                 // std::cout << "Sleep for 5 seconds" << std::endl;
