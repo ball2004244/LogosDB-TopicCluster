@@ -9,7 +9,7 @@ def log(message: str) -> None:
     """
     Logs a message to the console.
     """
-    # print(message)
+    print(message)
     with open("sumdb_log.txt", "a") as log_file:
         log_file.write(message + "\n")
 
@@ -93,11 +93,14 @@ def main():
         log(f'Missing {len(true_topics) - len(topic_chunk_count)} nodes: {set(true_topics) - set(topic_chunk_count.keys())}')
         
         log('\nDATA COUNT ANALYSIS')
+        row_topic_pairs = dict(sorted(row_topic_pairs.items(), key=lambda x: x[1], reverse=True))
+
         for topic, rows in row_topic_pairs.items():
-            log(f"{topic}: {rows} (Rows: {row_topic_count[topic]})")
+            log(f"{topic}: {row_topic_count[topic]:,}")
+            # log(f"Pairs: {rows}")
 
         total_rows = sum(row_topic_count.values())
-        log(f'Total rows: {total_rows}')
+        log(f'\nTotal rows: {total_rows:,}')
 
         log('\nCONTINUITY CHECK')
         for topic, chunks in row_topic_pairs.items():
