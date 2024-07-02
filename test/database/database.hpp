@@ -33,6 +33,7 @@ public:
     void disconnect();
     bool isConnected() const;
 
+
 protected:
     std::unique_ptr<pqxx::connection> connection;
 };

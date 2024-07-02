@@ -113,8 +113,5 @@ def main():
     except Exception as e:
         log(str(e), file=sys.stderr)
 
-#! Get wrong chunkstart & chunkend from SumDB
-#! Maybe issues with summary C++ algorithm or with this script
-#TODO: Check if this script is working correctly, otherwise check the summary algorithm
 if __name__ == "__main__":
     main()

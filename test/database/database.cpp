@@ -312,7 +312,7 @@ pqxx::result TopicCluster::executeQueryWithResult(const std::string &sql)
 
 SumDB::SumDB(const std::string &dbname, const std::string &username, const std::string &password, const std::string &host, const std::string &port,const std::string &tableName) : PostgresDB(dbname, username, password, host, port)
 {
-    std::string query = "CREATE TABLE IF NOT EXISTS " + tableName + " (id INTEGER PRIMARY KEY, chunkStart INT, chunkEnd INT, topic TEXT, summary TEXT, updatedAt TIMESTAMP);";
+    std::string query = "CREATE TABLE IF NOT EXISTS " + tableName + " (id SERIAL PRIMARY KEY, chunkStart INT, chunkEnd INT, topic TEXT, summary TEXT, updatedAt TIMESTAMP);";
     executeQuery(query);
 
     std::cout << "SumDB object created" << std::endl;
@@ -320,12 +320,5 @@ SumDB::SumDB(const std::string &dbname, const std::string &username, const std::
 
 SumDB::~SumDB()
 {
-    if (!isConnected()) {
-        std::cout << "No connection to database" << std::endl;
-        return;
-    }
-
-    disconnect();
-
     std::cout << "SumDB object destroyed" << std::endl;
 }

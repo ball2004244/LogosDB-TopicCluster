@@ -89,17 +89,12 @@ void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data) {
         TopicNodeRow topicNodeRow(id, question, answer, keywords, updatedAt);
         data.push_back(topicNodeRow);
     }
-
-    // Sort the data vector by id
-    std::sort(data.begin(), data.end(), [](const TopicNodeRow& a, const TopicNodeRow& b) {
-        return a.id < b.id;
-    });
 }
 
 /*
 Store chunk summary to SumDB
 */
-void storeChunkSummary(const std::string &summary, const std::string &topic, const std::vector<TopicNodeRow> &data)
+void storeChunkSummary(const std::string &summary, const std::string &topic, const std::vector<TopicNodeRow> &data, SumDB &sumdb, std::string sumTable)
 {
     // Extract necessary information
     int chunkStart = data[0].id;
@@ -107,27 +102,25 @@ void storeChunkSummary(const std::string &summary, const std::string &topic, con
 
     std::time_t now = std::time(0);
 
+    // Get max id from SumDB
+    std::string query = "SELECT MAX(id) FROM " + sumTable + ";";
+    pqxx::result result = sumdb.executeQueryWithResult(query);
+    int maxId = 1;
+    if (!result[0][0].is_null() && !result[0][0].as<std::string>().empty())
+        maxId = result[0][0].as<int>() + 1;
+
     // Create SumDBRow
-    SumDBRow sumDBRow(0, chunkStart, chunkEnd, topic, summary, now);
-
-    // Init a connection to SumDB
-    std::string host = "logosdb-sumdb";
-    std::string port = "5432";
-    std::string username = "user";
-    std::string password = "password";
-    std::string dbname = "db"; // internal database name
-    std::string sumTable = "test"; // Assume the table name is test for all db in cluster
-
+    SumDBRow sumDBRow(maxId, chunkStart, chunkEnd, topic, summary, now);
+    
     // Store SumDBRow to SumDB
-    //TODO: Implement chunkID for every ChunkSize data, instead of using SERIAL id from postgres
-    SumDB sumdb(dbname, username, password, host, port, sumTable);
-    std::string query = "INSERT INTO " + sumTable + 
-                        " (chunkStart, chunkEnd, topic, summary, updatedAt) VALUES (" +
-                        std::to_string(sumDBRow.chunkStart) + ", " + 
-                        std::to_string(sumDBRow.chunkEnd) + ", '" + 
-                        sumDBRow.topic + "', '" + 
-                        escape(sumDBRow.summary) + "', TO_TIMESTAMP(" + 
-                        std::to_string(sumDBRow.updatedAt) + "));";
+    query = "INSERT INTO " + sumTable + 
+            " (id, chunkStart, chunkEnd, topic, summary, updatedAt) VALUES (" +
+            std::to_string(sumDBRow.id) + ", " +
+            std::to_string(sumDBRow.chunkStart) + ", " + 
+            std::to_string(sumDBRow.chunkEnd) + ", '" + 
+            sumDBRow.topic + "', '" + 
+            escape(sumDBRow.summary) + "', TO_TIMESTAMP(" + 
+            std::to_string(sumDBRow.updatedAt) + "));";
 
     sumdb.executeQuery(query);
 }
@@ -147,6 +140,15 @@ int main()
         std::string password = "password";
         long long CHUNK_SIZE = 10000;
 
+        // Init SumDB here
+        std::string SumHost = "logosdb-sumdb";
+        std::string SumPort = "5432";
+        std::string SumUsername = "user";
+        std::string SumPassword = "password";
+        std::string SumDbname = "db"; // internal database name
+        std::string sumTable = "test"; // Assume the table name is test for all db in cluster
+
+        SumDB sumdb(SumDbname, SumUsername, SumPassword, SumHost, SumPort, sumTable);
         //! This method is deprecated, use keywordCounter instead
         // CURL *curl = curl_easy_init();
 
@@ -156,7 +158,6 @@ int main()
         std::string query = "";
         std::string table = "test"; // Assume the table name is test for all db in cluster
         long long table_size = 0;
-        long long margin = 3 * CHUNK_SIZE; // Set margin error to 3 chunks, prevent from missing data
         long long chunk_count = 0;
         long long order = 0;
         int count = 0;
@@ -196,7 +197,10 @@ int main()
                 std::cout << "Start chunk " << ++order << "/" << chunk_count << std::endl;
                 std::vector<TopicNodeRow> data;
                 // Get data by chunk
-                query = "SELECT * FROM " + table + " LIMIT " + std::to_string(CHUNK_SIZE) + " OFFSET " + std::to_string(i) + ";";
+                query = "SELECT * FROM " + table + 
+                " ORDER BY id ASC LIMIT " + 
+                std::to_string(CHUNK_SIZE) + 
+                " OFFSET " + std::to_string(i) + ";";
 
                 pqxx::result result = cluster.executeQueryWithResult(query);
 
@@ -209,10 +213,8 @@ int main()
 
                 std::string summary = convertSummaryToString(keywordAggregate(data));
 
-                // TODO: fix bug here, the sumID has gap when doing insert
-                //! Assumtion: Gap arises on concurrent write to the same table, so we need to lock the table
                 // Store chunk summary to SumDB
-                // storeChunkSummary(summary, topic, data);
+                storeChunkSummary(summary, topic, data, sumdb, sumTable);
 
                 // Wait for 5 seconds before processing next chunk
                 // std::cout << "Sleep for 5 seconds" << std::endl;
