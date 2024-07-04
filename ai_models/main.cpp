@@ -1,23 +1,28 @@
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <cpr/cpr.h>
 #include <iostream>
+#include <string>
 
-namespace py = pybind11;
-
-
-// TODO: Need to fix pybind header error
 int main() {
-    Py_Initialize(); // Initialize the Python interpreter
-    auto kw_extract_module = py::module_::import("kw_extract_module");
-    auto extract_keywords = kw_extract_module.attr("extract_keywords");
+    std::string host = "http://localhost:8000";
+    std::string endpoint = "/keywords";
+    std::string url = host + endpoint;
 
-    std::string text = "Your text to extract keywords from";
-    auto keywords = extract_keywords(text).cast<std::vector<std::string>>();
+    // JSON payload
+    std::string input = "Your input text here";
+    std::string jsonPayload = R"({"text": ")" + input + R"("})";
+    // Make a POST request
+    auto response = cpr::Post(cpr::Url{url},
+                              cpr::Header{{"Content-Type", "application/json"}},
+                              cpr::Body{jsonPayload});
 
-    for (const auto& keyword : keywords) {
-        std::cout << keyword << std::endl;
+    // Check if the request was successful
+    if (response.status_code == 200) {
+        // Process the response text (assuming it's JSON, XML, or plain text)
+        std::cout << "Response from FastAPI server: " << response.text << std::endl;
+    } else {
+        // Handle errors or unsuccessful requests
+        std::cout << "Failed to get a successful response. Status code: " << response.status_code << std::endl;
     }
 
-    Py_Finalize(); // Finalize the Python interpreter
     return 0;
 }
