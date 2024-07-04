@@ -103,6 +103,7 @@ def main():
         log(f'\nTotal rows: {total_rows:,}')
 
         log('\nCONTINUITY CHECK')
+        no_gap = True
         for topic, chunks in row_topic_pairs.items():
             # Sort the chunks by chunkstart to ensure correct order
             chunks.sort(key=lambda x: x[0])
@@ -112,6 +113,10 @@ def main():
                 # Check if there is a gap
                 if next_chunk_start != current_chunk_end + 1:
                     log(f"Gap found in topic '{topic}' within chunks [{current_chunk_end}, {next_chunk_start}]")
+                    no_gap = False
+
+        if no_gap:
+            log('No gap found!')
 
     except Exception as e:
         log(str(e), file=sys.stderr)
