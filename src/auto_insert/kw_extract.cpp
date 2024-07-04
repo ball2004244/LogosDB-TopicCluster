@@ -2,15 +2,15 @@
 
 // Function to extract keywords from input text
 std::string extractKeywords(const std::string& input) {
-    std::string host = "localhost";
+    std::string host = "kw-extract-server";
     std::string port = "8000";
     std::string endpoint = "/keywords";
     std::string url = "http://" + host + ":" + port + endpoint;
 
     std::string jsonPayload = R"({"text": ")" + input + R"("})";
 
-    // Make a POST request
-    auto response = cpr::Post(cpr::Url{url},
+    // Make a GET request
+    auto response = cpr::Get(cpr::Url{url},
                               cpr::Header{{"Content-Type", "application/json"}},
                               cpr::Body{jsonPayload});
 

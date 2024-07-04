@@ -28,7 +28,8 @@ RUN ldconfig
 
 COPY src/auto_insert/ .
 COPY src/database/ database/
-COPY inputs/ inputs/
+COPY inputs/topics.txt topics.txt
+COPY inputs/input.csv input.csv
 
 RUN g++ -o auto_insert auto_insert.cpp database/database.cpp kw_extract.cpp -lpqxx -lpq -lcurl -ljsoncpp -lcpr
 
