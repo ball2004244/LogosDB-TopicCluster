@@ -12,8 +12,8 @@ RUN ln -s /usr/include/jsoncpp/json/ /usr/include/json
 
 COPY src/auto_insert/ .
 COPY src/database/ database/
-COPY inputs/topics.txt topics.txt
-COPY inputs/input.csv input.csv
+COPY inputs/topics.txt inputs/topics.txt
+COPY inputs/input.csv inputs/input.csv
 
 RUN g++ -o auto_insert auto_insert.cpp database/database.cpp kw_extract.cpp -lpqxx -lpq -lcurl -ljsoncpp
 
