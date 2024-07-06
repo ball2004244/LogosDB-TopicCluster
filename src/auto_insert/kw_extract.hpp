@@ -1,11 +1,16 @@
-#ifndef EXTRACT_KEYWORDS_H
-#define EXTRACT_KEYWORDS_H
+#ifndef KW_EXTRACT_HPP
+#define KW_EXTRACT_HPP
 
-#include <iostream>
 #include <string>
-#include <cpr/cpr.h>
+#include <map>
+#include <curl/curl.h>
 #include <json/json.h>
+#include <iostream>
 
-std::string extractKeywords(const std::string& input);
+// Callback function to capture the response data
+static size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::string *userp);
+std::string getKeywords(const std::string& inputText);
+std::map<std::string, float> getKeywordsMap(const std::string& inputText);
+std::string reformatKeywords(const std::map<std::string, float>& keywordsMap);
 
-#endif // EXTRACT_KEYWORDS_H
+#endif // KW_EXTRACT_HPP

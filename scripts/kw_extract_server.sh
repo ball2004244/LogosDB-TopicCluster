@@ -8,4 +8,3 @@ docker rm -f $name
 
 echo "Running kw_extract server container"
 docker run --network=$network --name $name -d kw_extract_server
-

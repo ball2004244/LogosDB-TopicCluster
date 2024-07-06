@@ -3,9 +3,11 @@
 db="logosdb-auto-insert"
 network="topic_cluster_topicdb-cluster"
 
+# First the kw-extract server must be running
+bash scripts/kw_extract_server.sh
+
 # Build the Docker image
 docker build -t auto_insert_interface -f src/auto_insert/Dockerfile .
-
 
 docker rm -f $db
 

@@ -6,6 +6,7 @@
 #include <ctime>
 #include <iomanip>
 #include "database/database.hpp"
+#include "kw_extract.hpp"
 
 /*
 This file accept data from csv and insert it to db cluster
@@ -157,14 +158,32 @@ std::string classifyInput(std::vector<std::string> datum, int topicIdx)
 
 // TODO: Replace this with the actual keyword extraction model
 // For now, return a list of 5 keywords [kw1, kw2, kw3, kw4, kw5]
-std::string getKeywords(std::vector<std::string> data)
+std::string extractKeywords(std::vector<std::string> data)
 {
     if (data.empty())
     {
         throw std::invalid_argument("No data to extract keywords");
     }
 
-    return "kw1,kw2,kw3,kw4,kw5";
+    std:string question = data[0];
+    std::string answer = data[1];
+
+    // Get keywords from the kw-extract-server
+    std::map<std::string, float> questionKeywordsMap = getKeywordsMap(question);
+    std::map<std::string, float> answerKeywordsMap = getKeywordsMap(answer);
+
+    // Extract all kw from 2 maps, ignore the score, if the kw is in both maps, find average score
+    std::map<std::string, float> keywordsMap;
+    for (const auto& [keyword, score] : questionKeywordsMap) {
+        if (answerKeywordsMap.find(keyword) != answerKeywordsMap.end()) {
+            keywordsMap[keyword] = (score + answerKeywordsMap[keyword]) / 2;
+            continue;
+        }
+        keywordsMap[keyword] = score;
+    }
+
+    // Convert into a string
+    return reformatKeywords(keywordsMap);
 }
 
 // After classification, we need to reformat the data
@@ -195,7 +214,7 @@ std::map<std::string, std::vector<std::vector<std::string>>> reformatData(std::v
         row.erase(row.begin() + topicIdx);
 
         // Then add 2 more columns for keywords and current time
-        std::string keywords = getKeywords(row);
+        std::string keywords = extractKeywords(row);
         std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         std::tm* tm = std::localtime(&now);
         std::stringstream ss;

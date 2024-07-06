@@ -10,6 +10,7 @@ class TextRequest(BaseModel):
 
 @app.post("/keywords")
 def extract_keywords(request: TextRequest) -> List[Tuple[str, float]]:
+    print(f'User request: {request.text}')
     kw_model = KeyBERT()
     keywords = kw_model.extract_keywords(request.text, keyphrase_ngram_range=(1, 2), stop_words=None)
     return keywords
