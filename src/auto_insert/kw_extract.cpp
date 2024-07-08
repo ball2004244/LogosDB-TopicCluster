@@ -13,18 +13,20 @@ std::string getKeywords(const std::string& inputText) {
     std::string endpoint = "/keywords";
     std::string url = "http://" + host + ":" + port + endpoint;
 
-    
     CURL *curl;
     CURLcode res;
     std::string readBuffer;
-    std::string postData = "{\"text\":\"" + inputText + "\"}";
+    Json::Value root;
+    root["text"] = inputText; // Construct JSON payload using JsonCpp
+    Json::StreamWriterBuilder builder;
+    const std::string postData = Json::writeString(builder, root);
 
     curl_global_init(CURL_GLOBAL_ALL);
     curl = curl_easy_init();
     if(curl) {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, -1L); // Let libcurl determine the size
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData.length());
         struct curl_slist *headers = NULL;
         headers = curl_slist_append(headers, "Content-Type: application/json");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -50,20 +52,18 @@ std::string getKeywords(const std::string& inputText) {
     return readBuffer;
 }
 
-
 std::map<std::string, float> getKeywordsMap(const std::string& inputText) {
     std::string response = getKeywords(inputText);
     Json::Value root;
     Json::Reader reader;
-    bool parsingSuccessful = reader.parse(response, root);
-    if (!parsingSuccessful) {
+    if (!reader.parse(response, root)) {
         std::cerr << "Failed to parse the JSON response\n";
         return {};
     }
 
     std::map<std::string, float> keywordsMap;
-    for (const auto& keyword : root) {
-        keywordsMap[keyword[0].asString()] = keyword[1].asFloat();
+    for (const auto& keyword : root.getMemberNames()) {
+        keywordsMap[keyword] = root[keyword].asFloat();
     }
 
     return keywordsMap;
@@ -74,6 +74,8 @@ std::string reformatKeywords(const std::map<std::string, float>& keywordsMap) {
     for (const auto& [keyword, score] : keywordsMap) {
         reformattedKeywords += keyword + ",";
     }
-    reformattedKeywords.pop_back(); // Remove the trailing comma
+    if (!reformattedKeywords.empty()) {
+        reformattedKeywords.pop_back(); // Remove the trailing comma
+    }
     return reformattedKeywords;
 }
