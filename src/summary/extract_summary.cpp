@@ -33,6 +33,8 @@ void finalize_python() {
 /*
 Helper function to call the mass_extract_summaries function from the Cython module
 */
+
+// TODO: Implement multi-procesing in C++ instead of python multiprocessing
 std::vector<std::string> mass_extract_summaries(const std::vector<std::string>& inputs) {
     std::vector<std::string> summaries;
 
@@ -47,6 +49,7 @@ std::vector<std::string> mass_extract_summaries(const std::vector<std::string>& 
     PyObject* pFunc = PyObject_GetAttrString(pModule, "mass_extract_summaries");
     if (!pFunc || !PyCallable_Check(pFunc)) {
         PyErr_Print();
+        Py_XDECREF(pModule); // Clean up the module reference
         throw std::runtime_error("Failed to load mass_extract_summaries function");
     }
 
@@ -61,6 +64,9 @@ std::vector<std::string> mass_extract_summaries(const std::vector<std::string>& 
     PyObject* pResult = PyObject_CallObject(pFunc, PyTuple_Pack(1, pInputs));
     if (!pResult) {
         PyErr_Print();
+        Py_XDECREF(pInputs);
+        Py_XDECREF(pFunc);
+        Py_XDECREF(pModule);
         throw std::runtime_error("Failed to call mass_extract_summaries function");
     }
 
@@ -71,10 +77,10 @@ std::vector<std::string> mass_extract_summaries(const std::vector<std::string>& 
     }
 
     // Clean up
-    Py_DECREF(pInputs);
-    Py_DECREF(pResult);
-    Py_DECREF(pFunc);
-    Py_DECREF(pModule);
+    Py_XDECREF(pInputs);
+    Py_XDECREF(pResult);
+    Py_XDECREF(pFunc);
+    Py_XDECREF(pModule);
 
     return summaries;
 }
@@ -93,7 +99,6 @@ std::vector<std::pair<int, std::string>> extractSummary(const std::vector<TopicN
         concatQAText.push_back(text);
     }
 
-    // Initialize Python interpreter
     initialize_python();
 
     // Summarize the text
@@ -105,7 +110,6 @@ std::vector<std::pair<int, std::string>> extractSummary(const std::vector<TopicN
         throw;
     }
 
-    // Finalize Python interpreter
     finalize_python();
 
     // Combine the summaries with the row IDs
@@ -132,28 +136,3 @@ std::string convertSummaryToString(const std::vector<std::pair<int, std::string>
 
     return result;
 }
-
-// int main() {
-//     // Create a mock dataset
-//     std::vector<TopicNodeRow> mockData = {
-//         {1, "Answer 1", "Question 1", {"keyword1", "keyword2"}, std::time(nullptr)},
-//         {2, "Answer 2", "Question 2", {"keyword3", "keyword4"}, std::time(nullptr)},
-//         {3, "Answer 3", "Question 3", {"keyword5", "keyword6"}, std::time(nullptr)}
-//     };
-
-//     // Extract summaries
-//     std::vector<std::pair<int, std::string>> summaries;
-//     try {
-//         summaries = extractSummary(mockData);
-//     } catch (const std::exception &e) {
-//         std::cerr << "Error: " << e.what() << std::endl;
-//         return 1;
-//     }
-
-//     // Print the summaries
-//     for (const auto &summary : summaries) {
-//         std::cout << "ID: " << summary.first << ", Summary: " << summary.second << std::endl;
-//     }
-
-//     return 0;
-// }
