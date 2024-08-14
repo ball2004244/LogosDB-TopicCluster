@@ -1,4 +1,4 @@
-#! This is for the AI version of the summary, currently deprecated
+#! Approach 1: AI-chunking summary, currently deprecated
 # FROM gcc:latest
 
 # WORKDIR /app
@@ -15,18 +15,55 @@
 
 # CMD ./summary
 
-#! This is a statistical approach to the summary
+#! Approach 2: statistical summary with keyword extraction from every data
+# FROM gcc:latest
+
+# WORKDIR /app
+
+# RUN apt-get update && apt-get install -y libpqxx-dev
+
+# COPY src/summary/ .
+# COPY src/database/ database/
+# COPY inputs/topics.txt inputs/topics.txt
+
+# RUN g++ -o summary summary.cpp keyword_counter.cpp database/database.cpp -lpqxx -lpq
+
+# CMD ./summary
+
+#! Approach 3: Extractive summary with sentence ranking using Cython & Multiprocessing
+# TODO: Implement this approach
+
+# Use gcc as the base image
 FROM gcc:latest
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y libpqxx-dev
+# Install Python 3.11 and other necessary dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3.11-venv \
+    python3-pip \
+    libpqxx-dev
 
-COPY src/summary/ .
+# Set Python 3.11 as the default python3
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+
+# Create and activate a virtual environment
+RUN python3 -m venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
+
+# Install Python packages within the virtual environment
+RUN pip install --upgrade pip && \
+    pip install nltk networkx numpy scikit-learn
+
+# Copy source files
+COPY src/summary/ . 
 COPY src/database/ database/
 COPY inputs/topics.txt inputs/topics.txt
 
-# RUN g++ -o auto_insert auto_insert.cpp database/database.cpp -lpqxx -lpq
-RUN g++ -o summary summary.cpp keyword_counter.cpp database/database.cpp -lpqxx -lpq
+# Compile the C++ code
+RUN g++ -o summary summary.cpp extract_summary.cpp database/database.cpp -lpqxx -lpq -I/usr/include/python3.11 -lpython3.11
 
+# Use JSON array for CMD to prevent unintended behavior related to OS signals
 CMD ./summary

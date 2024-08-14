@@ -12,8 +12,9 @@
 #include "schema.hpp"
 #include "database/database.hpp"
 
-// #include "ai_summary.hpp" //! Summarize using AI, currently deprecated
-#include "keyword_counter.hpp" // Summarize using keyword counter, a statistical approach
+// #include "ai_summary.hpp" //! Approach 1: Summarize using GenAI (deprecated)
+// #include "keyword_counter.hpp" //! Approach 2: Summarize using keyword counter (statistical)
+#include "extract_summary.hpp" //! Approach 3: Summarize using extractive summarization
 
 
 

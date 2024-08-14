@@ -208,11 +208,15 @@ int main()
                 reformatChunk(result, data);
 
                 // Get chunk summary
-                //! This method is deprecated, use keywordCounter instead
+                //! Approach 1: Summarize using GenAI API (deprecated)
                 // std::string summary = getChunkSummary(data, curl, CHUNK_SIZE);
 
-                std::string summary = convertSummaryToString(keywordAggregate(data));
+                //! Approach 2: Summarize using keyword counter
+                // std::string summary = convertSummaryToString(keywordAggregate(data));
 
+                //! Approach 3: Summarize using extractive summarization
+                std::string summary = convertSummaryToString(extractSummary(data));
+                
                 // Store chunk summary to SumDB
                 storeChunkSummary(summary, topic, data, sumdb, sumTable);
 

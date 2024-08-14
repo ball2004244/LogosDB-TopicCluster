@@ -98,6 +98,11 @@ _Note: This process will take time_
    If you want to use SumDB with intergrated AI, you need to copy `.env.copy` to a new file called `.env` and fill out your Google Gemini API.
 
 
-Then, run `bash ./scripts/summary.sh`, which will introduce a summary interface into the TopicCluster, then summarize all data by chunk.
+Then, run 
+```bash 
+bash ./scripts/summary.sh
+```
+
+which will introduce a summary interface into the TopicCluster, then summarize all data by chunk.
 
 _Note: This process will take time_

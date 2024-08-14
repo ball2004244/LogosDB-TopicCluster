@@ -30,6 +30,7 @@ docker rm -f $interface
 #! Uncomment to run on SumAI mode
 # docker run --network=$network --name $interface --env-file .env -d logosdb-summary
 
+#! Uncomment to run on keyword mode
 docker run --network=$network --name $interface -d logosdb-summary
 
 # Output the logs
