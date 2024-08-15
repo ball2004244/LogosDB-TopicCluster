@@ -161,6 +161,10 @@ int main()
         long long chunk_count = 0;
         long long order = 0;
         int count = 0;
+
+        // Initialize Python and load the module once
+        PyObject* pModule = initialize_python();
+
         // Loop through all topics
         for (auto &topic : topics)
         {
@@ -215,7 +219,7 @@ int main()
                 // std::string summary = convertSummaryToString(keywordAggregate(data));
 
                 //! Approach 3: Summarize using extractive summarization
-                std::string summary = convertSummaryToString(extractSummary(data));
+                std::string summary = convertSummaryToString(extractSummary(pModule, data));
                 
                 // Store chunk summary to SumDB
                 storeChunkSummary(summary, topic, data, sumdb, sumTable);
@@ -225,6 +229,9 @@ int main()
                 // std::this_thread::sleep_for(std::chrono::seconds(5));
             }
         }
+
+        // Finalize Python
+        finalize_python();
     }
     catch (const std::exception &e)
     {

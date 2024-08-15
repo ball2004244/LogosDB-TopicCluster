@@ -17,11 +17,21 @@ Run the compiled file with:
 Helper function to initialize the Python interpreter and import the Cython module
 */
 
-void initialize_python() {
+PyObject* initialize_python() {
     Py_Initialize();
     PyRun_SimpleString("import sys");
     PyRun_SimpleString("sys.path.append('.')");
+
+    // Import the Cython module
+    PyObject* pModule = PyImport_ImportModule("extract_sum_mp");
+    if (!pModule) {
+        PyErr_Print();
+        throw std::runtime_error("Failed to load extract_sum_mp module");
+    }
+
+    return pModule;
 }
+
 /*
 Helper function to finalize the Python interpreter
 */
@@ -34,16 +44,8 @@ void finalize_python() {
 Helper function to call the mass_extract_summaries function from the Cython module
 */
 
-// TODO: Implement multi-procesing in C++ instead of python multiprocessing
-std::vector<std::string> mass_extract_summaries(const std::vector<std::string>& inputs) {
+std::vector<std::string> mass_extract_summaries(PyObject* pModule, const std::vector<std::string>& inputs) {
     std::vector<std::string> summaries;
-
-    // Import the Cython module
-    PyObject* pModule = PyImport_ImportModule("extract_sum_mp");
-    if (!pModule) {
-        PyErr_Print();
-        throw std::runtime_error("Failed to load extract_sum_mp module");
-    }
 
     // Get the mass_extract_summaries function
     PyObject* pFunc = PyObject_GetAttrString(pModule, "mass_extract_summaries");
@@ -80,7 +82,6 @@ std::vector<std::string> mass_extract_summaries(const std::vector<std::string>& 
     Py_XDECREF(pInputs);
     Py_XDECREF(pResult);
     Py_XDECREF(pFunc);
-    Py_XDECREF(pModule);
 
     return summaries;
 }
@@ -88,7 +89,7 @@ std::vector<std::string> mass_extract_summaries(const std::vector<std::string>& 
 /*
 This function does extractive summarization on the data
 */
-std::vector<std::pair<int, std::string>> extractSummary(const std::vector<TopicNodeRow> &data) {
+std::vector<std::pair<int, std::string>> extractSummary(PyObject* pModule, const std::vector<TopicNodeRow> &data) {
     if (data.empty())
         return {};
 
@@ -99,18 +100,13 @@ std::vector<std::pair<int, std::string>> extractSummary(const std::vector<TopicN
         concatQAText.push_back(text);
     }
 
-    initialize_python();
-
     // Summarize the text
     std::vector<std::string> summaries;
     try {
-        summaries = mass_extract_summaries(concatQAText);
+        summaries = mass_extract_summaries(pModule, concatQAText);
     } catch (const std::exception &e) {
-        finalize_python();
         throw;
     }
-
-    finalize_python();
 
     // Combine the summaries with the row IDs
     std::vector<std::pair<int, std::string>> result;
