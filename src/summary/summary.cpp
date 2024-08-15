@@ -138,7 +138,7 @@ int main()
         std::string port = "5432";
         std::string username = "user";
         std::string password = "password";
-        long long CHUNK_SIZE = 10000;
+        long long CHUNK_SIZE = 500;
 
         // Init SumDB here
         std::string SumHost = "logosdb-sumdb";
