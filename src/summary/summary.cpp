@@ -245,6 +245,10 @@ int main()
                 // Store chunk summary to SumDB
                 storeChunkSummary(summary, topic, data, sumdb, sumTable);
 
+                // Empty log buffer
+                std::cout << std::flush;
+                std::cerr << std::flush;
+
                 // Wait for 5 seconds before processing next chunk
                 // std::cout << "Sleep for 5 seconds" << std::endl;
                 // std::this_thread::sleep_for(std::chrono::seconds(5));
