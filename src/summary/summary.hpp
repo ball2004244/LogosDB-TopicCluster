@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <thread>
 #include <chrono>
+#include <future> // Ensure python finished before releasing GIL
 #include "schema.hpp"
 #include "database/database.hpp"
 

@@ -55,7 +55,7 @@ ENV PATH="/app/venv/bin:$PATH"
 
 # Install Python packages within the virtual environment
 RUN pip install --upgrade pip && \
-    pip install nltk networkx numpy scikit-learn
+    pip install nltk networkx numpy==2.0.0 scikit-learn cython
 
 # Copy source files
 COPY src/summary/ . 
@@ -66,4 +66,4 @@ COPY inputs/topics.txt inputs/topics.txt
 RUN g++ -o summary summary.cpp extract_summary.cpp database/database.cpp -lpqxx -lpq -I/usr/include/python3.11 -lpython3.11
 
 # Use JSON array for CMD to prevent unintended behavior related to OS signals
-CMD ./summary
+CMD ["./summary"]

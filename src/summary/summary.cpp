@@ -29,7 +29,8 @@ std::vector<std::string> split(const std::string &s, char delimiter)
 Helper function to parse datetime
 */
 
-std::time_t parseTime(const std::string& timeStr) {
+std::time_t parseTime(const std::string &timeStr)
+{
     std::tm tm = {};
     std::stringstream ss(timeStr);
     ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
@@ -39,7 +40,7 @@ std::time_t parseTime(const std::string& timeStr) {
 /*
 Hlper function to escape char
 */
-//A helper function to escape char before insert to db
+// A helper function to escape char before insert to db
 std::string escape(const std::string &s)
 {
     std::string result;
@@ -47,10 +48,17 @@ std::string escape(const std::string &s)
     {
         switch (c)
         {
-            case '\'': result += "''"; break; // Escape single quote with another single quote
-            case '\"': result += "\\\""; break; // Escape double quote
-            case '\\': result += "\\\\"; break; // Escape backslash
-            default: result += c;
+        case '\'':
+            result += "''";
+            break; // Escape single quote with another single quote
+        case '\"':
+            result += "\\\"";
+            break; // Escape double quote
+        case '\\':
+            result += "\\\\";
+            break; // Escape backslash
+        default:
+            result += c;
         }
     }
     return result;
@@ -61,14 +69,19 @@ A helper function to safely cast field to type T
 
 */
 
-template<typename T>
-T safe_as(const pqxx::field& field, T default_value) {
-    if (field.is_null()) {
+template <typename T>
+T safe_as(const pqxx::field &field, T default_value)
+{
+    if (field.is_null())
+    {
         return default_value;
     }
-    try {
+    try
+    {
         return field.as<T>();
-    } catch (const std::exception&) {
+    }
+    catch (const std::exception &)
+    {
         return default_value;
     }
 }
@@ -76,14 +89,17 @@ T safe_as(const pqxx::field& field, T default_value) {
 /*
 Reformat all data from 1 database by chunk
 */
-void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data) {
-    for (const auto &row : result) {
+void reformatChunk(pqxx::result &result, std::vector<TopicNodeRow> &data)
+{
+    for (const auto &row : result)
+    {
         int id = safe_as<int>(row[0], 0);
         std::string question = safe_as<std::string>(row[1], "");
         std::string answer = safe_as<std::string>(row[2], "");
         std::string keywordsStr = safe_as<std::string>(row[3], "");
         std::vector<std::string> keywords = {};
-        if (!keywordsStr.empty()) keywords = split(keywordsStr, ',');
+        if (!keywordsStr.empty())
+            keywords = split(keywordsStr, ',');
         std::time_t updatedAt = safe_as<std::time_t>(row[4], 0);
 
         TopicNodeRow topicNodeRow(id, question, answer, keywords, updatedAt);
@@ -111,15 +127,15 @@ void storeChunkSummary(const std::string &summary, const std::string &topic, con
 
     // Create SumDBRow
     SumDBRow sumDBRow(maxId, chunkStart, chunkEnd, topic, summary, now);
-    
+
     // Store SumDBRow to SumDB
-    query = "INSERT INTO " + sumTable + 
+    query = "INSERT INTO " + sumTable +
             " (id, chunkStart, chunkEnd, topic, summary, updatedAt) VALUES (" +
             std::to_string(sumDBRow.id) + ", " +
-            std::to_string(sumDBRow.chunkStart) + ", " + 
-            std::to_string(sumDBRow.chunkEnd) + ", '" + 
-            sumDBRow.topic + "', '" + 
-            escape(sumDBRow.summary) + "', TO_TIMESTAMP(" + 
+            std::to_string(sumDBRow.chunkStart) + ", " +
+            std::to_string(sumDBRow.chunkEnd) + ", '" +
+            sumDBRow.topic + "', '" +
+            escape(sumDBRow.summary) + "', TO_TIMESTAMP(" +
             std::to_string(sumDBRow.updatedAt) + "));";
 
     sumdb.executeQuery(query);
@@ -145,7 +161,7 @@ int main()
         std::string SumPort = "5432";
         std::string SumUsername = "user";
         std::string SumPassword = "password";
-        std::string SumDbname = "db"; // internal database name
+        std::string SumDbname = "db";  // internal database name
         std::string sumTable = "test"; // Assume the table name is test for all db in cluster
 
         SumDB sumdb(SumDbname, SumUsername, SumPassword, SumHost, SumPort, sumTable);
@@ -163,7 +179,7 @@ int main()
         int count = 0;
 
         // Initialize Python and load the module once
-        PyObject* pModule = initialize_python();
+        PyObject *pModule = initialize_python();
 
         // Loop through all topics
         for (auto &topic : topics)
@@ -201,10 +217,10 @@ int main()
                 std::cout << "Start chunk " << ++order << "/" << chunk_count << std::endl;
                 std::vector<TopicNodeRow> data;
                 // Get data by chunk
-                query = "SELECT * FROM " + table + 
-                " ORDER BY id ASC LIMIT " + 
-                std::to_string(CHUNK_SIZE) + 
-                " OFFSET " + std::to_string(i) + ";";
+                query = "SELECT * FROM " + table +
+                        " ORDER BY id ASC LIMIT " +
+                        std::to_string(CHUNK_SIZE) +
+                        " OFFSET " + std::to_string(i) + ";";
 
                 pqxx::result result = cluster.executeQueryWithResult(query);
 
@@ -219,8 +235,13 @@ int main()
                 // std::string summary = convertSummaryToString(keywordAggregate(data));
 
                 //! Approach 3: Summarize using extractive summarization
-                std::string summary = convertSummaryToString(extractSummary(pModule, data));
-                
+                auto future = std::async(std::launch::async, extractSummary, pModule, data);
+                std::vector<std::pair<int, std::string>> RawSummaries = future.get();
+                std::string summary = convertSummaryToString(RawSummaries);
+
+                //! Approach 4: Summarize using extractive summarization with C++ multithreading
+                // std::string summary = convertSummaryToString(extractSummary_cpp(pModule, data));
+
                 // Store chunk summary to SumDB
                 storeChunkSummary(summary, topic, data, sumdb, sumTable);
 
