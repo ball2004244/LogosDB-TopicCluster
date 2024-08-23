@@ -8,7 +8,7 @@ WORKDIR /app
 # Copy everything from the current directory to /app in the image
 COPY . .
 
-# RUN g++ -o test test.cpp database/database.cpp -lpqxx -lpq -std=c++17
+# RUN g++ -o test test.cpp database/database.cpp -lpqxx -lpq -std=c++17w
 
 # CMD ./test
 
