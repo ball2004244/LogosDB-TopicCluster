@@ -1,3 +1,4 @@
+from multiprocessing import Pool, cpu_count
 from typing import List, Tuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -27,41 +28,35 @@ def similarity_search(user_query: str, chunk_summary: str) -> float:
     return similarity[0][0]
 
 
+def process_row(row: str, user_query: str, threshold: float) -> Tuple[str, float]:
+    """
+    Helper function to process a single row.
+    """
+    row = row.lower().strip()
+    if len(row) <= 5:
+        return None
+
+    score = similarity_search(user_query, row)
+    if score > threshold:
+        return (row, score)
+    return None
+
+
 def get_relevant_vectors_from_summary(chunk_summary: str, user_query: str, threshold: float = 0.5) -> List[Tuple[str, float]]:
     """
     Find all vectors (rows) in the chunk summary that have a similarity score above the threshold with the user query.
+
+    output schema: (row, score)
     """
 
-    relevant_rows = []
-    current_row = ""
+    rows = chunk_summary.split('\n')
 
-    # Iterate over each character in the chunk summary
-    for char in chunk_summary:
-        # Split summary into rows by newline symbol
-        if char != '\n':
-            current_row += char
-            continue
+    # Use multiprocessing Pool to parallelize the processing of rows
+    with Pool(cpu_count()) as pool:
+        results = pool.starmap(process_row, [(row, user_query, threshold) for row in rows])
 
-        # Skip rows that are too short
-        current_row = current_row.lower().strip()
-        if len(current_row) <= 5:
-            current_row = ""
-            continue
-
-        score = similarity_search(user_query, current_row)
-
-        # only add rows with a similarity score above the threshold
-        if score > threshold:
-            relevant_rows.append((current_row, score))
-
-        current_row = ""
-
-    # Check the last row if it doesn't end with a newline
-    current_row = current_row.lower().strip()
-    if len(current_row) > 5:
-        score = similarity_search(user_query, current_row)
-        if score > threshold:
-            relevant_rows.append((current_row, score))
+    # Filter out None results
+    relevant_rows = [result for result in results if result is not None]
 
     return relevant_rows
 
@@ -70,6 +65,8 @@ def get_all_relevant_vectors(raw_data: List[Tuple[str]], user_query: str, thresh
     """
     Get all relevant vectors from all chunks in the raw data.
     (which has similarity > threshold)
+    
+    output schema: (score, row, chunk_start, chunk_end, topic)
     """
 
     # Do similarity search for each chunk summary

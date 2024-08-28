@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import List, Tuple
 from psycopg2 import sql
 import psycopg2
-
 '''
 HELPER FUNCTION
 '''
@@ -32,13 +31,16 @@ MAIN OBJECTS
 
 class SumDB:
     def __init__(self) -> None:
-        self.sumdb_topic = 'logosdb-sumdb'  # using localhost for now
+        self.sumdb_topic = 'logosdb-sumdb'  # using localhost for development
         self.port = '5432'
         self.dbname = 'db'  # internal database name
         self.username = 'user'
         self.password = 'password'
         self.table = 'test'  # Name of table to query
         self.conn = None
+
+        # start connection on init
+        self.connect()
 
     def connect(self) -> None:
         self.conn = psycopg2.connect(
@@ -52,7 +54,7 @@ class SumDB:
         formatted_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f'[{formatted_datetime}] Connected to database \'{self.dbname}\' on {self.sumdb_topic}:{self.port} as \'{self.username}\'')
 
-        column_names = self.get_column_names()
+        column_names = get_column_names(self.conn, self.table)
         print(
             f"Column names in '{self.table}' table: {', '.join(column_names)}")
 
@@ -90,6 +92,8 @@ class LogosCluster:
     def find_articles(self, relevant_vectors: List[Tuple[float, str, int, int, str]], k_docs: int = 5) -> List[Tuple[float, str, str, int, int, str]]:
         '''
         Fetches the detailed articles for the top-k most relevant vectors.
+
+        output schema: (similarity, query, article, chunkstart, chunkend, topic)
         '''
         output = []
 
